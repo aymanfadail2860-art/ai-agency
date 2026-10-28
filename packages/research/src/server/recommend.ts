@@ -29,6 +29,11 @@ import type { DetectedSignal } from "./signals";
  * men ændrer aldrig scoren.
  */
 
+/** Gør første bogstav småt, men bevarer forkortelser som "AI" og "CRM". */
+function lowerFirst(text: string): string {
+  return /^[A-ZÆØÅ]{2}/.test(text) ? text : text.charAt(0).toLowerCase() + text.slice(1);
+}
+
 export const SCORE_WEIGHTS = {
   observed_gap: 0.35,
   industry_fit: 0.3,
@@ -153,8 +158,8 @@ export function buildRecommendations(input: RecommendInput): ServiceRecommendati
 
     const relevance =
       matched.length > 0
-        ? `Virksomheden er registreret under ${industryText}, hvor ${item.name.toLowerCase()} typisk er relevant. Researchen observerede: ${matched.map((s) => s.label.toLowerCase()).join("; ")}.`
-        : `Virksomheden er registreret under ${industryText}, hvor ${item.name.toLowerCase()} ofte er relevant. Der er ikke observeret konkrete signaler — relevansen er en hypotese.`;
+        ? `Virksomheden er registreret under ${industryText}, hvor ${lowerFirst(item.name)} typisk er relevant. Researchen observerede: ${matched.map((s) => s.label.toLowerCase()).join("; ")}.`
+        : `Virksomheden er registreret under ${industryText}, hvor ${lowerFirst(item.name)} ofte er relevant. Der er ikke observeret konkrete signaler — relevansen er en hypotese.`;
 
     const uncertainties = [
       "Omfanget af det adresserede behov (fx antal henvendelser eller timer brugt) er ikke kendt og skal afklares med virksomheden.",

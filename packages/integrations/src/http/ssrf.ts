@@ -63,6 +63,16 @@ export function isPrivateIp(ip: string): boolean {
 export interface UrlCheckOptions {
   /** DNS-opslag kan udskiftes i tests. */
   resolve?: (hostname: string) => Promise<string[]>;
+  /**
+   * Bag en udgående proxy kan lokal DNS mangle; så foretager proxyen opslaget.
+   * Standard: tilladt når HTTP(S)_PROXY er sat. IP-literaler og interne navne
+   * afvises stadig. Se docs/security.md.
+   */
+  allowUnresolvedBehindProxy?: boolean;
+}
+
+function proxyConfigured(): boolean {
+  return Boolean(process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy);
 }
 
 async function defaultResolve(hostname: string): Promise<string[]> {
@@ -99,6 +109,7 @@ export async function assertSafeUrl(input: string, options: UrlCheckOptions = {}
   try {
     addresses = await (options.resolve ?? defaultResolve)(hostname);
   } catch {
+    if (options.allowUnresolvedBehindProxy ?? proxyConfigured()) return url;
     throw new AppError("blocked_url", `Værtsnavnet ${hostname} kunne ikke opløses.`);
   }
   if (addresses.length === 0 || addresses.some(isPrivateIp)) {

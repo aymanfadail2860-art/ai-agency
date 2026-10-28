@@ -88,7 +88,7 @@ export function createCollectionStore<T extends { id: string }>(
     async find(predicate) {
       return (await readAll()).find(predicate) ?? null;
     },
-    upsert(item) {
+    async upsert(item) {
       const valid = schema.parse(item);
       return withLock(lockKey(), async () => {
         const items = await readAll();

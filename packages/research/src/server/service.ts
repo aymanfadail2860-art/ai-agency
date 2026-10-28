@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  DEFAULT_SERVICE_CATALOG,
   ResearchQuoteHandoffSchema,
   type Company,
   type ResearchJob,
@@ -38,6 +39,8 @@ export const StartResearchSchema = z.object({
   companyId: z.string().startsWith("cmp_"),
   websiteUrl: z.string().url().max(500).nullable().optional(),
 });
+
+const STALE_JOB_MS = 10 * 60_000;
 
 export interface CompanyOverview {
   company: Company;
@@ -106,7 +109,11 @@ export async function startResearch(companyId: string, websiteUrl?: string | nul
   const company = await companyRegistry.get(companyId);
   if (!company) throw new AppError("not_found", "Virksomheden blev ikke fundet.");
   const running = await jobStore.find((j) => j.companyId === companyId && (j.status === "queued" || j.status === "running"));
-  if (running) return running;
+  if (running) {
+    // Et job, der ikke er opdateret i 10 minutter, er afbrudt (fx ved genstart) og markeres som fejlet.
+    if (Date.now() - new Date(running.updatedAt).getTime() < STALE_JOB_MS) return running;
+    await jobStore.update(running.id, (j) => ({ ...j, status: "failed", error: "Jobbet blev afbrudt (fx ved genstart af serveren).", finishedAt: nowIso(), updatedAt: nowIso() }));
+  }
 
   let url: string | null = null;
   if (websiteUrl) {
@@ -182,9 +189,13 @@ export async function buildQuoteHandoff(reportId: string): Promise<ResearchQuote
       recommendationId: rec.id,
       catalogItemId: rec.catalogItemId,
       serviceName: rec.serviceName,
-      description: rec.editedDescription ?? rec.relevance,
+      description: rec.editedDescription ?? DEFAULT_SERVICE_CATALOG.find((c) => c.id === rec.catalogItemId)?.shortDescription ?? rec.problem,
       rationale: rec.relevance,
-      keyFindings: rec.findings.filter((f) => f.classification !== "hypothesis").slice(0, 5).map((f) => f.text),
+      // Registerfundet (branche) er fælles for alle services og gentages ikke.
+      keyFindings: rec.findings
+        .filter((f) => f.classification !== "hypothesis" && !f.text.startsWith("Registreret branche"))
+        .slice(0, 5)
+        .map((f) => f.text),
       priority: rec.priority,
       complexity: rec.complexity,
       score: rec.score.total,

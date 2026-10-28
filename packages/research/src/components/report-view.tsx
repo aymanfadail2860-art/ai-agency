@@ -226,7 +226,7 @@ export function ResearchReportView({ report, company }: { report: ResearchReport
         {error && <Alert variant="error" title="Der opstod en fejl">{error}</Alert>}
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur lg:left-64">
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur lg:left-72">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-3">
           <div className="text-sm">
             <span className="font-semibold" data-testid="selected-count">{selectedCount}</span> <span className="text-muted-foreground">services valgt</span>
@@ -286,7 +286,7 @@ function RecommendationCard({ rec, onChange }: { rec: ServiceRecommendation; onC
             <p className="mb-3 text-xs text-muted-foreground">{rec.score.method}</p>
             <div className="space-y-2.5">
               {rec.score.criteria.map((c) => (
-                <div key={c.key} className="grid grid-cols-[150px_1fr_44px] items-center gap-3 text-sm">
+                <div key={c.key} className="grid grid-cols-[200px_1fr_44px] items-center gap-3 text-sm">
                   <span className="text-foreground">
                     {c.label} <span className="text-xs text-muted-foreground">({Math.round(c.weight * 100)} %)</span>
                   </span>

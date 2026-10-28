@@ -1,0 +1,260 @@
+[
+ {
+  "cvrNummer": 10150817,
+  "navne": [
+   {
+    "navn": "Erhvervs- og Selskabsstyrelsen",
+    "periode": {
+     "gyldigFra": "1964-04-01",
+     "gyldigTil": "2011-12-31"
+    },
+    "sidstOpdateret": "2013-11-22T22:09:56.000+01:00"
+   },
+   {
+    "navn": "Erhvervsstyrelsen",
+    "periode": {
+     "gyldigFra": "2012-01-01",
+     "gyldigTil": null
+    },
+    "sidstOpdateret": "2011-12-13T09:01:33.000+01:00"
+   }
+  ],
+  "beliggenhedsadresse": [
+   {
+    "adresseId": null,
+    "bogstavFra": null,
+    "bogstavTil": null,
+    "bynavn": null,
+    "conavn": null,
+    "etage": null,
+    "fritekst": null,
+    "husnummerFra": 1,
+    "husnummerTil": null,
+    "kommune": {
+     "kommuneKode": 101,
+     "kommuneNavn": "KØBENHAVN",
+     "periode": {
+      "gyldigFra": "2007-01-01",
+      "gyldigTil": null
+     },
+     "sidstOpdateret": "2006-11-13T00:00:00.000+01:00"
+    },
+    "landekode": "DK",
+    "periode": {
+     "gyldigFra": "1964-04-01",
+     "gyldigTil": "2012-06-24"
+    },
+    "postboks": null,
+    "postdistrikt": "København V",
+    "postnummer": 1604,
+    "sidedoer": null,
+    "sidstOpdateret": "2013-11-22T22:40:23.000+01:00",
+    "sidstValideret": null,
+    "vejkode": 3540,
+    "vejnavn": "Kampmannsgade"
+   },
+   {
+    "adresseId": "9ccc4f1d-2470-4f2f-a40e-17daacabd038",
+    "bogstavFra": null,
+    "bogstavTil": null,
+    "bynavn": null,
+    "conavn": null,
+    "etage": null,
+    "fritekst": null,
+    "husnummerFra": 17,
+    "husnummerTil": null,
+    "kommune": {
+     "kommuneKode": 101,
+     "kommuneNavn": "KØBENHAVN",
+     "periode": {
+      "gyldigFra": "2007-01-01",
+      "gyldigTil": null
+     },
+     "sidstOpdateret": "2006-11-13T00:00:00.000+01:00"
+    },
+    "landekode": "DK",
+    "periode": {
+     "gyldigFra": "2012-06-25",
+     "gyldigTil": null
+    },
+    "postboks": null,
+    "postdistrikt": "København Ø",
+    "postnummer": 2100,
+    "sidedoer": null,
+    "sidstOpdateret": "2012-06-28T12:12:00.000+02:00",
+    "sidstValideret": "2017-09-19T23:16:42.990+02:00",
+    "vejkode": 4143,
+    "vejnavn": "Langelinie Allé"
+   }
+  ],
+  "hovedbranche": [
+   {
+    "branchekode": "751300",
+    "branchetekst": "Offentlig administration vedrørende erhverv, infrastruktur mv.",
+    "periode": {
+     "gyldigFra": "1964-04-01",
+     "gyldigTil": "2007-12-31"
+    },
+    "sidstOpdateret": "2013-11-22T22:19:29.000+01:00"
+   },
+   {
+    "branchekode": "841300",
+    "branchetekst": "Administration af og bidrag til erhvervsfremme",
+    "periode": {
+     "gyldigFra": "2008-01-01",
+     "gyldigTil": "2024-12-31"
+    },
+    "sidstOpdateret": "2024-12-28T09:47:53.000+01:00"
+   },
+   {
+    "branchekode": "841300",
+    "branchetekst": "Administration af og bidrag til erhvervsfremme",
+    "periode": {
+     "gyldigFra": "2025-01-01",
+     "gyldigTil": null
+    },
+    "sidstOpdateret": "2024-12-28T09:54:15.000+01:00"
+   }
+  ],
+  "virksomhedsform": [
+   {
+    "ansvarligDataleverandoer": "DST",
+    "kortBeskrivelse": "STA",
+    "langBeskrivelse": "Statslig administrativ enhed",
+    "periode": {
+     "gyldigFra": "1964-04-01",
+     "gyldigTil": null
+    },
+    "sidstOpdateret": "2013-11-22T21:57:52.000+01:00",
+    "virksomhedsformkode": 230
+   }
+  ],
+  "livsforloeb": [
+   {
+    "periode": {
+     "gyldigFra": "1964-04-01",
+     "gyldigTil": null
+    },
+    "sidstOpdateret": "2007-05-21T13:42:48.000+02:00"
+   }
+  ],
+  "telefonNummer": [
+   {
+    "hemmelig": true,
+    "kontaktoplysning": "33307700",
+    "periode": {
+     "gyldigFra": "1964-04-01",
+     "gyldigTil": "2003-05-07"
+    },
+    "sidstOpdateret": "2013-11-22T22:14:39.000+01:00"
+   },
+   {
+    "hemmelig": false,
+    "kontaktoplysning": "35291000",
+    "periode": {
+     "gyldigFra": "2003-11-24",
+     "gyldigTil": "2018-10-05"
+    },
+    "sidstOpdateret": "2018-10-06T12:06:42.000+02:00"
+   },
+   {
+    "hemmelig": false,
+    "kontaktoplysning": "35291000",
+    "periode": {
+     "gyldigFra": "2018-10-06",
+     "gyldigTil": "2020-08-14"
+    },
+    "sidstOpdateret": "2020-08-15T15:05:33.000+02:00"
+   }
+  ],
+  "elektroniskPost": [
+   {
+    "hemmelig": true,
+    "kontaktoplysning": "eogs@eogs.dk",
+    "periode": {
+     "gyldigFra": "1964-04-01",
+     "gyldigTil": "2003-05-07"
+    },
+    "sidstOpdateret": "2013-11-22T22:14:39.000+01:00"
+   }
+  ],
+  "hjemmeside": [],
+  "reklamebeskyttet": false,
+  "virksomhedsstatus": [],
+  "virksomhedMetadata": {
+   "nyesteNavn": {
+    "navn": "Erhvervsstyrelsen",
+    "periode": {
+     "gyldigFra": "2012-01-01",
+     "gyldigTil": null
+    },
+    "sidstOpdateret": "2011-12-13T09:01:33.000+01:00"
+   },
+   "nyesteBeliggenhedsadresse": {
+    "adresseId": "9ccc4f1d-2470-4f2f-a40e-17daacabd038",
+    "bogstavFra": null,
+    "bogstavTil": null,
+    "bynavn": null,
+    "conavn": null,
+    "etage": null,
+    "fritekst": null,
+    "husnummerFra": 17,
+    "husnummerTil": null,
+    "kommune": {
+     "kommuneKode": 101,
+     "kommuneNavn": "KØBENHAVN",
+     "periode": {
+      "gyldigFra": "2007-01-01",
+      "gyldigTil": null
+     },
+     "sidstOpdateret": "2006-11-13T00:00:00.000+01:00"
+    },
+    "landekode": "DK",
+    "periode": {
+     "gyldigFra": "2012-06-25",
+     "gyldigTil": null
+    },
+    "postboks": null,
+    "postdistrikt": "København Ø",
+    "postnummer": 2100,
+    "sidedoer": null,
+    "sidstOpdateret": "2012-06-28T12:12:00.000+02:00",
+    "sidstValideret": "2017-09-19T23:16:42.990+02:00",
+    "vejkode": 4143,
+    "vejnavn": "Langelinie Allé"
+   },
+   "nyesteHovedbranche": {
+    "branchekode": "841300",
+    "branchetekst": "Administration af og bidrag til erhvervsfremme",
+    "periode": {
+     "gyldigFra": "2025-01-01",
+     "gyldigTil": null
+    },
+    "sidstOpdateret": "2024-12-28T09:54:15.000+01:00"
+   },
+   "nyesteVirksomhedsform": {
+    "ansvarligDataleverandoer": "DST",
+    "kortBeskrivelse": "STA",
+    "langBeskrivelse": "Statslig administrativ enhed",
+    "periode": {
+     "gyldigFra": "1964-04-01",
+     "gyldigTil": null
+    },
+    "sidstOpdateret": "2013-11-22T21:57:52.000+01:00",
+    "virksomhedsformkode": 230
+   },
+   "nyesteAarsbeskaeftigelse": {
+    "aar": 2018,
+    "antalAarsvaerk": 535,
+    "antalAnsatte": 597,
+    "antalInklusivEjere": null,
+    "intervalKodeAntalAarsvaerk": "ANTAL_500_999",
+    "intervalKodeAntalAnsatte": "ANTAL_500_999",
+    "intervalKodeAntalInklusivEjere": null,
+    "sidstOpdateret": "2019-10-18T02:30:51.000+02:00"
+   },
+   "sammensatStatus": "Aktiv",
+   "stiftelsesDato": "1964-04-01"
+  }
+ }
+]

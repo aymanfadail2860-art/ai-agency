@@ -21,7 +21,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="da" className={`${GeistSans.variable} ${GeistMono.variable}`}>
       <body className="font-sans">
         <Sidebar mode={settings.mode} />
-        <div className="lg:pl-64">
+        <div className="lg:pl-72">
           <MobileNav />
           <header className="flex h-14 items-center justify-end gap-3 border-b border-border/70 bg-background/80 px-6 backdrop-blur">
             <span className="text-xs text-muted-foreground">Tilstand</span>

@@ -35,7 +35,7 @@ function DemoTag() {
 function BarPreview() {
   const w = 320, h = 140, pad = 24, max = 40;
   const slot = (w - pad) / DEMO_MRR.length;
-  const bw = slot - 6;
+  const bw = slot * 0.56;
   return (
     <svg viewBox={`0 0 ${w} ${h + 18}`} className="w-full" role="img" aria-label="Demo: MRR pr. måned">
       {[0, 20, 40].map((t) => {
@@ -49,7 +49,7 @@ function BarPreview() {
       })}
       {DEMO_MRR.map((v, i) => {
         const bh = (v / max) * (h - 10);
-        const x = pad + i * slot + 3;
+        const x = pad + i * slot + (slot - bw) / 2;
         const y = h - bh;
         const r = 4;
         return (
@@ -67,8 +67,8 @@ function BarPreview() {
 
 function LinePreview() {
   const w = 320, h = 140, pad = 24, min = 15, max = 35;
-  const step = (w - pad - 8) / (DEMO_CONVERSION.length - 1);
-  const pts = DEMO_CONVERSION.map((v, i) => [pad + 4 + i * step, h - ((v - min) / (max - min)) * (h - 10)] as const);
+  const step = (w - pad - 22) / (DEMO_CONVERSION.length - 1);
+  const pts = DEMO_CONVERSION.map((v, i) => [pad + 10 + i * step, h - ((v - min) / (max - min)) * (h - 10)] as const);
   return (
     <svg viewBox={`0 0 ${w} ${h + 18}`} className="w-full" role="img" aria-label="Demo: tilbudskonvertering pr. måned">
       {[15, 25, 35].map((t) => {
@@ -106,12 +106,12 @@ export function DashboardPreview() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5" data-testid="demo-kpis">
           {DEMO_KPIS.map((k) => (
             <div key={k.label} className="rounded-xl border border-dashed border-border bg-card/70 p-4">
-              <div className="flex items-start justify-between gap-2">
-                <p className="text-xs font-medium text-muted-foreground">{k.label}</p>
-                <DemoTag />
-              </div>
+              <p className="break-words text-xs font-medium text-muted-foreground">{k.label}</p>
               <p className="mt-2 text-xl font-semibold tabular-nums text-foreground/70">{k.value}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">{k.note}</p>
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <DemoTag />
+                <span className="text-[11px] text-muted-foreground">{k.note}</span>
+              </div>
             </div>
           ))}
         </div>

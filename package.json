@@ -1,0 +1,33 @@
+{
+  "name": "ai-agency-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI Agency Platform V1 — modulær monorepo (Research, Tilbud, Produktion & Levering, CRM, Dashboard)",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @agency/web dev",
+    "build": "pnpm --filter @agency/web build",
+    "start": "pnpm --filter @agency/web start",
+    "typecheck": "pnpm -r --parallel typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "pnpm build && playwright test",
+    "export:zip": "bash scripts/export-zip.sh"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "^22.10.0",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "unrs-resolver"
+    ]
+  }
+}

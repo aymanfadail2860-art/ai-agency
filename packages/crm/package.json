@@ -1,0 +1,29 @@
+{
+  "name": "@agency/crm",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Modul 4 \u2014 CRM (Afventer)",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@agency/core": "workspace:*",
+    "@agency/ui": "workspace:*",
+    "lucide-react": "0.577.0",
+    "zod": "3.25.76"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
+  }
+}

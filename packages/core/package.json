@@ -1,0 +1,12 @@
+{
+  "name": "@agency/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fælles platformkerne: datamodeller, API-kontrakter, hændelser, modulregister, lagring",
+  "type": "module",
+  "exports": { ".": "./src/index.ts", "./server": "./src/server/index.ts" },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": { "@agency/shared": "workspace:*", "zod": "3.25.76" }
+}

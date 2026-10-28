@@ -1,0 +1,12 @@
+{
+  "name": "@agency/integrations",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Integrationslag: CVR, AI (Claude), websøgning, sikker webhentning",
+  "type": "module",
+  "exports": { "." : "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": { "@agency/core": "workspace:*", "@agency/shared": "workspace:*", "@anthropic-ai/sdk": "0.137.0", "undici": "7.30.1", "zod": "3.25.76" }
+}

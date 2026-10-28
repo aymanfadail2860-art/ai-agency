@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 23% 97.5%;
+    --foreground: 222 47% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 13%;
+    --primary: 222 58% 19%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 33% 94%;
+    --secondary-foreground: 222 47% 22%;
+    --muted: 220 20% 94.5%;
+    --muted-foreground: 220 10% 42%;
+    --accent: 220 82% 54%;
+    --accent-foreground: 0 0% 100%;
+    --success: 152 58% 32%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 28 80% 30%;
+    --destructive: 0 72% 47%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 16% 89%;
+    --input: 220 16% 84%;
+    --ring: 220 82% 54%;
+    --sidebar: 222 58% 15%;
+    --sidebar-foreground: 220 40% 96%;
+    --sidebar-muted: 220 25% 68%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  fieldset:disabled input,
+  fieldset:disabled textarea,
+  fieldset:disabled select {
+    @apply cursor-not-allowed opacity-70;
+  }
+}

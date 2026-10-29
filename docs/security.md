@@ -25,7 +25,7 @@
 2. **Delt rate limiting**: in-memory-grænser gælder kun én proces. Brug Redis/Upstash.
 3. **DNS-rebinding**: IP-kontrollen sker før forbindelsen. En ondsindet DNS-server kan i teorien svare forskelligt. Løsning: pin den opløste IP i en egen `undici`-dispatcher (`connect.lookup`).
 4. **Bag udgående proxy**: når `HTTP(S)_PROXY` er sat, og lokal DNS ikke kan opløse en vært, overlades opslaget til proxyen, så IP-kontrollen ikke kan udføres lokalt. IP-literaler og interne navne afvises stadig. I produktion bør proxyen selv blokere private net, eller lokal DNS bør være tilgængelig (`allowUnresolvedBehindProxy: false`).
-5. **Database og backup**: JSON-filer har ingen transaktioner på tværs af samlinger og ingen backup eller kryptering at rest.
+5. **Database og backup**: lokalt har JSON-filer ingen transaktioner eller backup. På Vercel bruges Supabase, hvor adgang kræver headeren `x-agency-secret` (RLS; kun SHA-256-hashen gemmes i databasen). Dokumenterne er ikke normaliserede, og der er ingen transaktioner på tværs af dokumenter.
 6. **Baggrundsjobs**: research kører i webprocessen og går tabt ved genstart (job, der ikke er opdateret i 10 minutter, markeres som fejlede ved næste start). Brug en jobkø (fx Supabase Queues, Inngest eller BullMQ).
 7. **Audit-log og GDPR**: hændelsesloggen er ikke manipulationssikker. Der mangler sletning/indsigt (GDPR art. 15/17), databehandleraftaler og retention-politik for kildeuddrag.
 8. **Juridisk gennemgang** af scraping-politik, søge-API-vilkår og brug af reklamebeskyttede virksomheder i salgsarbejde.

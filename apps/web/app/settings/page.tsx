@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { CONTRACT_REGISTRY, MODULES } from "@agency/core";
-import { getSettings, listEvents } from "@agency/core/server";
+import { getSettings, getStorageBackend, listEvents } from "@agency/core/server";
 import { getIntegrationStatus } from "@agency/integrations";
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, PageHeader, Table, TBody, TD, TH, THead, TR } from "@agency/ui";
 import { formatDateTime } from "@agency/shared";
@@ -30,7 +30,10 @@ export default async function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Integrationer</CardTitle>
-            <CardDescription>API-nøgler konfigureres server-side i <code>.env.local</code> og vises aldrig i browseren.</CardDescription>
+            <CardDescription>
+              API-nøgler konfigureres server-side (<code>.env.local</code> eller Vercel) og vises aldrig i browseren. Datalagring:{" "}
+              <strong data-testid="storage-backend">{getStorageBackend() === "supabase" ? "Supabase (database)" : "lokale JSON-filer"}</strong>.
+            </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
             <Table>

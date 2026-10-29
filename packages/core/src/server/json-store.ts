@@ -2,11 +2,13 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { z } from "zod";
 import type { ModuleKey } from "../events";
+import { createSupabaseStore, getSupabaseStoreConfig } from "./supabase-store";
 
 /**
  * PERSISTENS (lokal demo)
  * -----------------------
  * Enkel, persistent JSON-fillagring pr. modul: `<DATA_DIR>/<modul>/<samling>.json`.
+ * På Vercel bruges i stedet Supabase (se supabase-store.ts) bag samme interface.
  * Hvert modul opretter kun samlinger i sit eget navnerum, og andre moduler
  * tilgår data via modulets offentlige service-API — aldrig via filerne.
  *
@@ -47,12 +49,41 @@ async function withLock<R>(key: string, fn: () => Promise<R>): Promise<R> {
   }
 }
 
+/**
+ * Vælger lagring ved første brug: Supabase, når SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY
+ * og AGENCY_DB_SECRET er sat (fx på Vercel), ellers lokale JSON-filer.
+ */
 export function createCollectionStore<T extends { id: string }>(
   module: ModuleKey,
   collection: string,
   schema: z.ZodType<T, z.ZodTypeDef, unknown>,
 ): CollectionStore<T> {
   if (!/^[a-z][a-z0-9-]*$/.test(collection)) throw new Error(`Ugyldigt samlingsnavn: ${collection}`);
+  let backend: CollectionStore<T> | null = null;
+  const resolve = () => {
+    const config = getSupabaseStoreConfig();
+    backend ??= config ? createSupabaseStore(config, module, collection, schema) : createFileStore(module, collection, schema);
+    return backend;
+  };
+  return {
+    list: () => resolve().list(),
+    get: (id) => resolve().get(id),
+    find: (predicate) => resolve().find(predicate),
+    upsert: (item) => resolve().upsert(item),
+    update: (id, mutate) => resolve().update(id, mutate),
+    remove: (id) => resolve().remove(id),
+  };
+}
+
+export function getStorageBackend(): "supabase" | "file" {
+  return getSupabaseStoreConfig() ? "supabase" : "file";
+}
+
+function createFileStore<T extends { id: string }>(
+  module: ModuleKey,
+  collection: string,
+  schema: z.ZodType<T, z.ZodTypeDef, unknown>,
+): CollectionStore<T> {
   const filePath = () => path.join(getDataDir(), module, `${collection}.json`);
 
   async function readAll(): Promise<T[]> {

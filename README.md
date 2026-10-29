@@ -55,6 +55,18 @@ I Live Mode bruges **aldrig** fiktive data som fallback. Manglende integrationer
 
 ---
 
+## Drift på Vercel med Supabase
+
+Platformen kan køre på Vercel med Supabase som database. Koden er den samme; kun lagringen skifter.
+
+1. Opret et Supabase-projekt, og kør `supabase/migrations/20261029000000_documents.sql`.
+2. Vælg en lang, tilfældig hemmelighed, og gem dens SHA-256-hash i databasen:
+   `insert into private.config (key, value) values ('api_secret_sha256', encode(extensions.digest('<hemmelighed>', 'sha256'), 'hex'));`
+3. Opret et Vercel-projekt fra GitHub-repositoryet med **Root Directory** `apps/web`.
+4. Sæt miljøvariablerne `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` og `AGENCY_DB_SECRET` (hemmeligheden i klartekst) samt `PLATFORM_DEFAULT_MODE=demo`.
+
+Indstillinger viser, om platformen bruger "Supabase (database)" eller "lokale JSON-filer". Platformen har intet login, så et offentligt Vercel-link bør kun bruges i Demo Mode uden rigtige API-nøgler.
+
 ## Test
 
 ```bash
@@ -111,6 +123,6 @@ Eksporten indeholder kildekode og dokumentation, men ikke `node_modules`, `.next
 - Produktion & Levering, CRM og Dashboard har kun visuelle previews og kontraktspecifikationer. Deres API-endepunkter svarer `501 Not Implemented`.
 - Brugerlogin og adgangsstyring.
 - Accept af tilbud og afsendelse til kunder. Status `accepted` findes i datamodellen, men bruges ikke.
-- PostgreSQL/Supabase: V1 bruger lokal JSON-lagring bag et udskifteligt `CollectionStore`-interface.
+- Lokalt bruges JSON-filer; på Vercel bruges Supabase bag samme `CollectionStore`-interface (ét JSONB-dokument pr. entitet, ikke normaliserede tabeller).
 - Konkurrentanalyse og stillingsopslag/anmeldelser kræver websøgning (`BRAVE_SEARCH_API_KEY`). Sociale profiler registreres kun via links på virksomhedens hjemmeside.
 - Alle priser i servicekataloget er fiktive demopriser.

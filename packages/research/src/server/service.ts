@@ -105,7 +105,15 @@ export async function getCompanyOverview(companyId: string): Promise<CompanyOver
 }
 
 /** Starter research asynkront og returnerer jobbet med det samme (klienten poller status). */
-export async function startResearch(companyId: string, websiteUrl?: string | null): Promise<ResearchJob> {
+export interface StartResearchOptions {
+  /**
+   * Planlægger kørslen efter svaret er sendt. På serverless (Vercel) skal routen
+   * give `after` fra next/server, så funktionen holdes i live til jobbet er færdigt.
+   */
+  defer?: (task: () => Promise<void>) => void;
+}
+
+export async function startResearch(companyId: string, websiteUrl?: string | null, options: StartResearchOptions = {}): Promise<ResearchJob> {
   const company = await companyRegistry.get(companyId);
   if (!company) throw new AppError("not_found", "Virksomheden blev ikke fundet.");
   const running = await jobStore.find((j) => j.companyId === companyId && (j.status === "queued" || j.status === "running"));
@@ -125,12 +133,18 @@ export async function startResearch(companyId: string, websiteUrl?: string | nul
   const job = await jobStore.upsert(newJob(company, url));
   await publishEvent({ type: "research.job.started", source: "research", mode: company.mode, subject: { companyId, jobId: job.id }, payload: {} });
 
-  void runResearchJob(job, company, ds).catch(async (err) => {
-    console.error("[research] job fejlede", err);
-    const message = err instanceof AppError ? err.message : "Uventet fejl under research.";
-    await jobStore.update(job.id, (j) => ({ ...j, status: "failed", error: message, finishedAt: nowIso(), updatedAt: nowIso() }));
-    await publishEvent({ type: "research.failed", source: "research", mode: company.mode, subject: { companyId, jobId: job.id }, payload: { message } });
-  });
+  const task = async () => {
+    try {
+      await runResearchJob(job, company, ds);
+    } catch (err) {
+      console.error("[research] job fejlede", err);
+      const message = err instanceof AppError ? err.message : "Uventet fejl under research.";
+      await jobStore.update(job.id, (j) => ({ ...j, status: "failed", error: message, finishedAt: nowIso(), updatedAt: nowIso() }));
+      await publishEvent({ type: "research.failed", source: "research", mode: company.mode, subject: { companyId, jobId: job.id }, payload: { message } });
+    }
+  };
+  if (options.defer) options.defer(task);
+  else void task();
   return job;
 }
 

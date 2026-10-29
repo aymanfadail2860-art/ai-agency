@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const securityHeaders = [
@@ -24,6 +25,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Monorepo: medtag workspace-pakker ved sporing af serverfiler (Vercel).
+  outputFileTracingRoot: path.join(__dirname, "../.."),
   transpilePackages: [
     "@agency/core",
     "@agency/shared",

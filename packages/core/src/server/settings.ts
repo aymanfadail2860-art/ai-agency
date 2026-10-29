@@ -1,14 +1,14 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { z } from "zod";
 import { nowIso } from "@agency/shared";
 import { ModeSchema, type Mode } from "../models";
 import { PlatformSettingsSchema, type PlatformSettings } from "../settings";
-import { getDataDir } from "./json-store";
+import { createCollectionStore } from "./json-store";
 import { publishEvent } from "./events";
 
-function settingsPath() {
-  return path.join(getDataDir(), "platform", "settings.json");
-}
+/** Platformindstillinger gemmes som ét dokument i platformens lagring (fil eller Supabase). */
+const SETTINGS_ID = "settings";
+const StoredSettingsSchema = PlatformSettingsSchema.extend({ id: z.literal(SETTINGS_ID) });
+const store = createCollectionStore("platform", "settings", StoredSettingsSchema);
 
 function defaultMode(): Mode {
   const parsed = ModeSchema.safeParse(process.env.PLATFORM_DEFAULT_MODE);
@@ -16,20 +16,13 @@ function defaultMode(): Mode {
 }
 
 export async function getSettings(): Promise<PlatformSettings> {
-  try {
-    const raw = JSON.parse(await readFile(settingsPath(), "utf8"));
-    const parsed = PlatformSettingsSchema.safeParse(raw);
-    if (parsed.success) return parsed.data;
-  } catch {
-    // Ingen gemte indstillinger endnu.
-  }
-  return { mode: defaultMode(), updatedAt: null };
+  const stored = await store.get(SETTINGS_ID);
+  return stored ? { mode: stored.mode, updatedAt: stored.updatedAt } : { mode: defaultMode(), updatedAt: null };
 }
 
 export async function updateSettings(update: { mode: Mode }): Promise<PlatformSettings> {
   const next: PlatformSettings = { mode: update.mode, updatedAt: nowIso() };
-  await mkdir(path.dirname(settingsPath()), { recursive: true });
-  await writeFile(settingsPath(), JSON.stringify(next, null, 2), "utf8");
+  await store.upsert({ id: SETTINGS_ID, ...next });
   await publishEvent({ type: "settings.updated", source: "platform", mode: next.mode, subject: {}, payload: { mode: next.mode } });
   return next;
 }

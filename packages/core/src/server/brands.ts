@@ -201,7 +201,11 @@ export const establishmentRegistry = {
  * Idempotent backfill af V1-data: hver virksomhed uden brand får et brand
  * (createdVia "legacy_v1") og en bekræftet relation, så V1-rapporter og
  * -tilbud kan vises i V2 uden at ændre de oprindelige poster.
+ * Id'erne afledes af virksomhedens id, så samtidige kørsler (flere
+ * serverinstanser) skriver til de samme poster i stedet for at lave dubletter.
  */
+const legacyId = (prefix: "brd" | "blr" | "web", companyId: string) => `${prefix}_${companyId.slice(companyId.indexOf("_") + 1)}`;
+
 export async function backfillLegacyCompanies(): Promise<Map<string, string>> {
   const map = new Map<string, string>();
   const [companies, relations] = await Promise.all([companyRegistry.list(), relationStore.list()]);
@@ -215,7 +219,7 @@ export async function backfillLegacyCompanies(): Promise<Map<string, string>> {
     if (anyRel) continue; // virksomheden er allerede knyttet til et V2-brand
     const now = nowIso();
     const brand = await brandStore.upsert({
-      id: newId("brand"),
+      id: legacyId("brd", company.id),
       name: company.name,
       mode: company.mode,
       primaryDomain: company.contact.website ? normalizeDomain(company.contact.website) : null,
@@ -224,9 +228,12 @@ export async function backfillLegacyCompanies(): Promise<Map<string, string>> {
       createdAt: company.createdAt,
       updatedAt: now,
     });
-    if (company.contact.website) await brandRegistry.addWebsite(brand.id, company.contact.website, "legacy_v1", true);
+    if (company.contact.website) {
+      const url = company.contact.website;
+      await websiteStore.upsert({ id: legacyId("web", company.id), brandId: brand.id, url, domain: normalizeDomain(url), isPrimary: true, discoveredVia: "legacy_v1", createdAt: now, updatedAt: now });
+    }
     await relationStore.upsert({
-      id: newId("brandRelation"),
+      id: legacyId("blr", company.id),
       brandId: brand.id,
       legalEntityId: company.id,
       cvr: company.cvr,

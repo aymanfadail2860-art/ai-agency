@@ -121,6 +121,21 @@ describe("brand-first identitet", () => {
     expect(again.status).toBe("rejected");
     expect(again.evidence).toHaveLength(2);
   });
+
+  it("V1-backfill laver ikke dubletter ved samtidige kørsler", async () => {
+    const { backfillLegacyCompanies, brandRegistry, relationRegistry, companyRegistry } = await import("@agency/core/server");
+    const v1 = await companyRegistry.register({
+      cvr: "10403782", name: "V1 Kunde ApS", mode: "demo", address: null, industry: null, companyForm: null, status: null, foundedAt: null, employees: null,
+      contact: { phone: null, email: null, website: "https://v1-kunde.example" }, adProtected: false, registrySource: { provider: "demo", retrievedAt: new Date().toISOString(), reference: null },
+    });
+    const [a, b] = await Promise.all([backfillLegacyCompanies(), backfillLegacyCompanies()]);
+    expect(a.get(v1.id)).toBe(b.get(v1.id));
+    const relations = await relationRegistry.forLegalEntity(v1.id);
+    expect(relations).toHaveLength(1);
+    expect(relations[0]?.status).toBe("confirmed");
+    expect((await brandRegistry.list()).filter((x) => x.createdVia === "legacy_v1" && x.name === "V1 Kunde ApS")).toHaveLength(1);
+    expect(await brandRegistry.websites(relations[0]!.brandId)).toHaveLength(1);
+  });
 });
 
 describe("omkostningsgrænser", () => {

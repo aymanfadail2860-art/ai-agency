@@ -12,6 +12,7 @@ export const CLASSIFICATION_LABELS: Record<ClaimClassification, string> = {
   fact: "Verificeret fakta",
   assessment: "Vurdering",
   hypothesis: "Hypotese",
+  unknown: "Ukendt",
 };
 
 export const COMPLEXITY_LABELS: Record<Complexity, string> = {

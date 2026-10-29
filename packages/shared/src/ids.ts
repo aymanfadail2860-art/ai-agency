@@ -4,6 +4,10 @@
  */
 export const ID_PREFIXES = {
   company: "cmp",
+  brand: "brd",
+  website: "web",
+  establishment: "est",
+  brandRelation: "blr",
   researchJob: "rjob",
   researchReport: "rrep",
   researchSource: "src",

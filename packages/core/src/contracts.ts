@@ -52,6 +52,39 @@ export const ResearchQuoteHandoffSchema = z.object({
 });
 export type ResearchQuoteHandoff = z.infer<typeof ResearchQuoteHandoffSchema>;
 
+/* -------------------------------------------------------------------------- */
+/* AKTIV i V2: Research → Tilbud (brand-first, CVR valgfrit)                  */
+/* -------------------------------------------------------------------------- */
+
+export const HandoffOpportunitySchema = z.object({
+  title: z.string(),
+  observed: z.string(),
+  potentialProblem: z.string(),
+  solution: z.string(),
+});
+
+export const ResearchQuoteHandoffV2Schema = z.object({
+  contract: z.literal("research.quote-handoff"),
+  version: z.literal(2),
+  handoffId: z.string().startsWith("hnd_"),
+  createdAt: IsoDate,
+  mode: ModeSchema,
+  brand: z.object({ brandId: z.string().startsWith("brd_"), name: z.string().min(1), website: z.string().nullable() }),
+  /** Kun bekræftede juridiske enheder overføres. */
+  legalEntity: CompanyRefSchema.extend({ address: z.string().nullable() }).nullable(),
+  researchReportId: z.string().startsWith("rrep_"),
+  researchSummary: z.string(),
+  overallRecommendation: z.string(),
+  opportunities: z.array(HandoffOpportunitySchema).max(12),
+  services: z.array(HandoffServiceSchema.extend({ proposedSolution: z.string().nullable(), customerQuestions: z.array(z.string()).max(8) })).min(1, "Vælg mindst én service, før der oprettes et tilbud."),
+  userNotes: z.string(),
+});
+export type ResearchQuoteHandoffV2 = z.infer<typeof ResearchQuoteHandoffV2Schema>;
+
+/** Tilbud modtager både v1 og v2 af kontrakten. */
+export const AnyResearchQuoteHandoffSchema = z.discriminatedUnion("version", [ResearchQuoteHandoffSchema, ResearchQuoteHandoffV2Schema]);
+export type AnyResearchQuoteHandoff = z.infer<typeof AnyResearchQuoteHandoffSchema>;
+
 export const QuoteIntakeResultSchema = z.object({
   quoteId: z.string().startsWith("qte_"),
   quoteNumber: z.string(),
@@ -131,12 +164,21 @@ export type MetricDatapoint = z.infer<typeof MetricDatapointSchema>;
 export const CONTRACT_REGISTRY = [
   {
     name: "research.quote-handoff",
+    version: 2,
+    from: "research",
+    to: "quotes",
+    status: "active",
+    endpoint: "POST /api/quotes/intake",
+    description: "Brand-first overførsel (CVR valgfrit) af valgte services, researchindsigter og anbefaling fra Research til Tilbud.",
+  },
+  {
+    name: "research.quote-handoff",
     version: 1,
     from: "research",
     to: "quotes",
     status: "active",
     endpoint: "POST /api/quotes/intake",
-    description: "Overfører valgte services, kundeidentitet og researchresumé fra Research til Tilbud.",
+    description: "V1: Overfører valgte services, kundeidentitet og researchresumé fra Research til Tilbud (understøttes fortsat).",
   },
   {
     name: "quotes.production-intake",

@@ -1,12 +1,16 @@
 import {
   DEFAULT_SERVICE_CATALOG,
+  INDUSTRY_SEGMENT_LABELS,
+  type Brand,
   type Company,
+  type IndustrySegment,
   type ResearchJob,
   type ResearchReport,
   type ResearchSource,
   type ResearchStep,
+  type Website,
 } from "@agency/core";
-import { publishEvent } from "@agency/core/server";
+import { establishmentRegistry, formatAddress, publishEvent } from "@agency/core/server";
 import {
   getSearchProvider,
   integrationConfig,
@@ -16,34 +20,35 @@ import {
 } from "@agency/integrations";
 import { AppError, isAppError, newId, nowIso } from "@agency/shared";
 import { runClaudeAnalysis } from "./claude-analysis";
-import { getDemoDatasetByCvr } from "./demo-data";
+import { findDemoSiteByDomain } from "./demo-data";
 import { parseHtmlPage, selectInternalPages, type ParsedPage } from "./html";
-import { segmentForIndustryCode } from "./industry";
-import { buildOpportunities, buildRecommendations } from "./recommend";
+import { segmentForIndustryCode, segmentFromText } from "./industry";
+import { buildMeetingQuestions, buildOpportunities, buildOverallRecommendation, buildRecommendations } from "./recommend";
 import { buildRulesCompetitors, buildRulesProfile, buildRulesSummary } from "./rules-analysis";
 import { detectSignals, type PageWithSource, type TextWithSource } from "./signals";
 import { pageSource, registrySource, textSource } from "./sources";
 import { jobStore, reportStore } from "./store";
+import { assessDigitalMaturity, buildWebsiteAnalysis, classifyPage, type PageType } from "./website";
 
 /**
- * RESEARCHPIPELINE
- * ----------------
- * registry → website → search → competitors → signals → recommendations → analysis → report
+ * RESEARCH ENGINE (V2, brand-first)
+ * ---------------------------------
+ * identity → website → search → competitors → signals → recommendations → analysis → report
  *
  * Datakilderne abstraheres i `ResearchDataSources`, så Demo Mode og Live Mode
- * kører præcis de samme analysetrin. I Live Mode bruges kun rigtige,
- * konfigurerede integrationer — der er ingen fallback til fiktive data.
+ * kører de samme analysetrin. I Live Mode bruges kun rigtige, konfigurerede
+ * integrationer — der er ingen fallback til fiktive data.
  */
 
 export const RESEARCH_STEPS: Array<Pick<ResearchStep, "key" | "label">> = [
-  { key: "registry", label: "Registerdata (CVR)" },
-  { key: "website", label: "Officiel hjemmeside" },
-  { key: "search", label: "Websøgning: nyheder, job, anmeldelser" },
-  { key: "competitors", label: "Konkurrenter" },
+  { key: "identity", label: "Brand og juridisk identitet" },
+  { key: "website", label: "Website Intelligence" },
+  { key: "search", label: "Websøgning: anmeldelser, job, nyheder, profiler" },
+  { key: "competitors", label: "Konkurrentanalyse" },
   { key: "signals", label: "Digitale funktioner og signaler" },
-  { key: "recommendations", label: "Serviceanbefalinger og score" },
-  { key: "analysis", label: "Virksomhedsanalyse" },
-  { key: "report", label: "Rapport" },
+  { key: "recommendations", label: "Serviceanbefalinger og Opportunity Score" },
+  { key: "analysis", label: "Forretningsanalyse" },
+  { key: "report", label: "Kommerciel rapport" },
 ];
 
 export interface FetchedDoc {
@@ -57,7 +62,7 @@ export interface ResearchDataSources {
   provider: string;
   fetchPage: (url: string) => Promise<FetchedDoc>;
   /** null = websøgning ikke tilgængelig. */
-  search: ((query: string, kind: "jobs" | "reviews" | "news" | "competitors") => Promise<SearchResult[]>) | null;
+  search: ((query: string, kind: "jobs" | "reviews" | "news" | "social" | "competitors") => Promise<SearchResult[]>) | null;
   useAi: boolean;
 }
 
@@ -75,33 +80,42 @@ export function liveDataSources(): ResearchDataSources {
   };
 }
 
-export function demoDataSources(company: Company): ResearchDataSources {
-  const dataset = getDemoDatasetByCvr(company.cvr);
-  if (!dataset) throw new AppError("not_found", "Demo-datasættet for virksomheden blev ikke fundet.");
+/** Demo Mode: fiktive sider, søgeresultater og konkurrenter for brandets .example-domæne. */
+export function demoDataSources(websites: string[]): ResearchDataSources {
+  const datasets = websites.map((w) => findDemoSiteByDomain(new URL(w).hostname)).filter((d): d is NonNullable<typeof d> => Boolean(d));
+  const primary = datasets[0];
   return {
     isDemo: true,
     provider: "demo",
     fetchPage: async (url) => {
       const normalized = url.replace(/#.*$/, "");
-      const html = dataset.pages[normalized] ?? dataset.pages[normalized.replace(/\/$/, "")] ?? dataset.competitors.find((c) => c.url === normalized)?.html;
-      if (!html) throw new AppError("integration_error", `Demo-siden ${url} findes ikke.`);
-      return { finalUrl: normalized, body: html, fetchedAt: nowIso() };
-    },
-    search: async (_query, kind) => {
-      if (kind === "competitors") {
-        return dataset.competitors.map((c) => ({ title: c.name, url: c.url, description: "Fiktiv konkurrent (Demo)", age: null }));
+      for (const ds of datasets) {
+        const html = ds.pages[normalized] ?? ds.pages[normalized.replace(/\/$/, "")] ?? ds.pages[`${normalized.replace(/\/$/, "")}/`] ?? ds.competitors.find((c) => c.url === normalized)?.html;
+        if (html) return { finalUrl: normalized, body: html, fetchedAt: nowIso() };
       }
-      return dataset.search
-        .filter((s) => s.kind === kind)
-        .map((s) => ({ title: s.title, url: s.url, description: s.text, age: null }));
+      throw new AppError("integration_error", `Demo-siden ${url} findes ikke.`);
     },
+    search: primary
+      ? async (_query, kind) => {
+          if (kind === "competitors") return primary.competitors.map((c) => ({ title: c.name, url: c.url, description: "Fiktiv konkurrent (Demo)", age: null }));
+          return primary.search.filter((s) => s.kind === kind).map((s) => ({ title: s.title, url: s.url, description: s.text, age: null }));
+        }
+      : null,
     useAi: false,
   };
 }
 
+export function demoSummaryFor(websites: string[]): string | null {
+  for (const w of websites) {
+    const ds = findDemoSiteByDomain(new URL(w).hostname);
+    if (ds) return ds.summary;
+  }
+  return null;
+}
+
 const DIRECTORY_HOSTS = /(^|\.)(krak|degulesider|proff|cvrapi|virk|facebook|linkedin|instagram|trustpilot|google|youtube|wikipedia|jobindex|ofir|bing|yelp|tripadvisor)\./i;
 
-function companyNameCore(name: string): string {
+function nameCore(name: string): string {
   return name
     .replace(/\b(aps|a\/s|i\/s|ivs|k\/s|p\/s|holding|v\/.*)\b/gi, "")
     .replace(/[^\p{L}\p{N}\s&]/gu, " ")
@@ -110,9 +124,9 @@ function companyNameCore(name: string): string {
     .toLowerCase();
 }
 
-function mentionsCompany(result: SearchResult, core: string): boolean {
+function mentionsAny(result: SearchResult, cores: string[]): boolean {
   const haystack = `${result.title} ${result.description}`.toLowerCase();
-  return core.length >= 3 && haystack.includes(core);
+  return cores.some((c) => c.length >= 3 && haystack.includes(c));
 }
 
 async function setStep(jobId: string, key: string, status: ResearchStep["status"], detail: string | null = null) {
@@ -124,12 +138,13 @@ async function setStep(jobId: string, key: string, status: ResearchStep["status"
   }));
 }
 
-export function newJob(company: Company, websiteUrl: string | null): ResearchJob {
+export function newJob(brand: Brand, websiteUrl: string | null, legalEntityId: string | null): ResearchJob {
   const now = nowIso();
   return {
     id: newId("researchJob"),
-    companyId: company.id,
-    mode: company.mode,
+    brandId: brand.id,
+    companyId: legalEntityId,
+    mode: brand.mode,
     status: "queued",
     steps: RESEARCH_STEPS.map((s) => ({ ...s, status: "pending", detail: null })),
     websiteUrl,
@@ -142,25 +157,54 @@ export function newJob(company: Company, websiteUrl: string | null): ResearchJob
   };
 }
 
-export async function runResearchJob(job: ResearchJob, company: Company, ds: ResearchDataSources): Promise<ResearchReport> {
+export interface BrandResearchInput {
+  brand: Brand;
+  websites: Website[];
+  /** Kun BEKRÆFTEDE juridiske enheder bruges som fakta i analysen. */
+  confirmedLegalEntities: Company[];
+  /** Alle relationer (inkl. foreslåede) — vises i rapporten med status. */
+  relationSnapshot: NonNullable<ResearchReport["legalEntities"]>;
+}
+
+function maxPages(): number {
+  const v = Number(process.env.RESEARCH_MAX_PAGES);
+  return Number.isFinite(v) && v >= 1 && v <= 15 ? Math.floor(v) : 8;
+}
+
+export async function runBrandResearch(job: ResearchJob, input: BrandResearchInput, ds: ResearchDataSources): Promise<ResearchReport> {
+  const { brand } = input;
   await jobStore.update(job.id, (j) => ({ ...j, status: "running", startedAt: nowIso(), updatedAt: nowIso() }));
   const sources: ResearchSource[] = [];
   const limitations: string[] = [];
   if (ds.isDemo) limitations.push("Demo Mode: alle kilder, virksomheder og konkurrenter er fiktive.");
 
-  // 1. Registerdata
-  await setStep(job.id, "registry", "running");
-  const registry = registrySource(company);
-  sources.push(registry);
-  await setStep(job.id, "registry", "done", `${company.registrySource.provider} · ${company.registrySource.retrievedAt.slice(0, 10)}`);
+  // 1. Identitet — registerdata kun for bekræftede juridiske enheder
+  await setStep(job.id, "identity", "running");
+  const registrySources = new Map<string, ResearchSource>();
+  for (const entity of input.confirmedLegalEntities) {
+    const src = registrySource(entity);
+    sources.push(src);
+    registrySources.set(entity.id, src);
+  }
+  const primaryLegal = input.confirmedLegalEntities[0] ?? null;
+  const primaryRegistrySourceId = primaryLegal ? registrySources.get(primaryLegal.id)!.id : null;
+  const suggested = input.relationSnapshot.filter((r) => r.status === "suggested");
+  if (input.confirmedLegalEntities.length === 0) {
+    limitations.push(suggested.length > 0 ? `${suggested.length} juridisk(e) enhed(er) er foreslået, men ikke bekræftet — registerdata indgår ikke i analysen.` : "Ingen juridisk enhed er knyttet til brandet — analysen bygger på hjemmeside og øvrige kilder.");
+  }
+  if (input.confirmedLegalEntities.length > 1) limitations.push("Flere juridiske enheder er bekræftet; den første bruges som primær i analysen.");
+  const snapshot = input.relationSnapshot.map((r) => ({ ...r, sourceId: registrySources.get(r.legalEntityId)?.id ?? null }));
+  await setStep(job.id, "identity", "done", input.confirmedLegalEntities.length > 0 ? `${input.confirmedLegalEntities.map((e) => `CVR ${e.cvr}`).join(", ")} bekræftet` : "Brand uden bekræftet CVR");
 
-  // 2. Officiel hjemmeside
-  const pages: PageWithSource[] = [];
-  const websiteUrl = job.websiteUrl ?? company.contact.website;
+  // 2. Website Intelligence
+  const pages: Array<PageWithSource & { pageType: PageType }> = [];
+  const blocked: Array<{ url: string; reason: string }> = [];
+  const primarySite = input.websites.find((w) => w.isPrimary) ?? input.websites[0];
+  const websiteUrl = job.websiteUrl ?? primarySite?.url ?? primaryLegal?.contact.website ?? null;
   let websiteAttempted = false;
   if (!websiteUrl) {
-    await setStep(job.id, "website", "skipped", "Ingen hjemmeside registreret eller angivet");
-    limitations.push("Ingen hjemmeside er registreret i CVR eller angivet — digitale funktioner er ikke undersøgt.");
+    await setStep(job.id, "website", "skipped", "Ingen hjemmeside kendt");
+    limitations.push("Ingen hjemmeside er kendt for brandet — digitale funktioner er ukendte.");
   } else if (!ds.isDemo && !integrationConfig.websiteFetchEnabled()) {
     await setStep(job.id, "website", "skipped", "Webhentning er deaktiveret");
     limitations.push("Hentning af hjemmesider er deaktiveret (RESEARCH_WEBSITE_FETCH=false).");
@@ -172,46 +216,49 @@ export async function runResearchJob(job: ResearchJob, company: Company, ds: Res
       const homePage = parseHtmlPage(home.body, home.finalUrl);
       const homeSource = pageSource(homePage, "website", home.fetchedAt, ds.isDemo, ds.provider);
       sources.push(homeSource);
-      pages.push({ sourceId: homeSource.id, page: homePage });
-      for (const url of selectInternalPages(homePage, 4)) {
+      pages.push({ sourceId: homeSource.id, page: homePage, pageType: "home" });
+      for (const url of selectInternalPages(homePage, maxPages() - 1)) {
         try {
           const doc = await ds.fetchPage(url);
           const parsed = parseHtmlPage(doc.body, doc.finalUrl);
           const src = pageSource(parsed, "website", doc.fetchedAt, ds.isDemo, ds.provider);
           sources.push(src);
-          pages.push({ sourceId: src.id, page: parsed });
+          pages.push({ sourceId: src.id, page: parsed, pageType: classifyPage(parsed.url) });
         } catch (err) {
-          limitations.push(`Undersiden ${url} kunne ikke hentes: ${isAppError(err) ? err.message : "ukendt fejl"}`);
+          blocked.push({ url, reason: isAppError(err) ? err.message : "ukendt fejl" });
         }
       }
-      await setStep(job.id, "website", "done", `${pages.length} side(r) analyseret`);
+      await setStep(job.id, "website", "done", `${pages.length} side(r) analyseret${blocked.length ? ` · ${blocked.length} kunne ikke hentes` : ""}`);
     } catch (err) {
       const message = isAppError(err) ? err.message : "ukendt fejl";
+      blocked.push({ url: websiteUrl, reason: message });
       limitations.push(`Hjemmesiden (${websiteUrl}) kunne ikke hentes: ${message}`);
       await setStep(job.id, "website", "failed", message);
     }
+    if (blocked.length > 0 && pages.length > 0) limitations.push(`${blocked.length} underside(r) kunne ikke hentes (fx pga. robots.txt eller timeout).`);
   }
 
   // 3. Websøgning
   const texts: TextWithSource[] = [];
   const competitorCandidates: SearchResult[] = [];
+  const cores = Array.from(new Set([nameCore(brand.name), ...input.confirmedLegalEntities.map((e) => nameCore(e.name))])).filter(Boolean);
   if (!ds.search) {
     await setStep(job.id, "search", "skipped", "Websøgning ikke konfigureret");
-    limitations.push("Websøgning er ikke konfigureret (BRAVE_SEARCH_API_KEY): nyheder, stillingsopslag, anmeldelser og konkurrenter er ikke undersøgt.");
+    limitations.push("Websøgning er ikke konfigureret (BRAVE_SEARCH_API_KEY): anmeldelser, stillingsopslag, nyheder, sociale profiler og konkurrenter er ikke undersøgt eksternt.");
   } else {
     await setStep(job.id, "search", "running");
-    const core = companyNameCore(company.name);
-    const queries: Array<{ kind: "jobs" | "reviews" | "news"; query: string }> = [
-      { kind: "jobs", query: `"${company.name}" job stilling` },
-      { kind: "reviews", query: `"${company.name}" anmeldelser` },
-      { kind: "news", query: `"${company.name}" nyheder` },
+    const queries: Array<{ kind: "jobs" | "reviews" | "news" | "social"; query: string }> = [
+      { kind: "reviews", query: `"${brand.name}" anmeldelser` },
+      { kind: "jobs", query: `"${brand.name}" job stilling` },
+      { kind: "news", query: `"${brand.name}" nyheder` },
+      { kind: "social", query: `"${brand.name}" linkedin OR facebook OR instagram` },
     ];
     let count = 0;
     for (const q of queries) {
       try {
         const results = await ds.search(q.query, q.kind);
-        // I Live Mode tilskrives et resultat kun virksomheden, hvis navnet optræder i det.
-        for (const r of results.filter((x) => ds.isDemo || mentionsCompany(x, core)).slice(0, 4)) {
+        // I Live Mode tilskrives et resultat kun brandet, hvis navnet optræder i det.
+        for (const r of results.filter((x) => ds.isDemo || mentionsAny(x, cores)).slice(0, 4)) {
           const src = textSource({ kind: q.kind, title: r.title, url: r.url, text: r.description, provider: ds.isDemo ? "demo" : "Brave Search", isDemo: ds.isDemo });
           sources.push(src);
           texts.push({ sourceId: src.id, kind: q.kind, text: `${r.title} ${r.description}` });
@@ -222,15 +269,15 @@ export async function runResearchJob(job: ResearchJob, company: Company, ds: Res
       }
     }
     try {
-      const industry = company.industry?.text ?? "";
-      const city = company.address?.city ?? "";
+      const industry = primaryLegal?.industry?.text ?? (pages[0]?.page.description || "");
+      const city = primaryLegal?.address?.city ?? "";
       if (industry) {
-        const ownHost = websiteUrl ? new URL(websiteUrl).hostname.replace(/^www\./, "") : null;
-        const results = await ds.search(`${industry} ${city}`.trim(), "competitors");
+        const ownHosts = new Set(input.websites.map((w) => w.domain));
+        const results = await ds.search(`${industry} ${city}`.trim().slice(0, 120), "competitors");
         competitorCandidates.push(
           ...results.filter((r) => {
             const host = new URL(r.url).hostname.replace(/^www\./, "");
-            return host !== ownHost && (ds.isDemo || !DIRECTORY_HOSTS.test(host));
+            return !ownHosts.has(host) && (ds.isDemo || !DIRECTORY_HOSTS.test(host));
           }),
         );
       }
@@ -252,8 +299,8 @@ export async function runResearchJob(job: ResearchJob, company: Company, ds: Res
         const parsed: ParsedPage = parseHtmlPage(doc.body, doc.finalUrl);
         const src = pageSource(parsed, "competitor", doc.fetchedAt, ds.isDemo, ds.provider);
         sources.push(src);
-        const analysis = detectSignals({ company, pages: [{ sourceId: src.id, page: parsed }], texts: [], registrySourceId: registry.id, websiteAttempted: true });
-        competitorPages.push({ sourceId: src.id, name: candidate.title, url: doc.finalUrl, features: analysis.features });
+        const a = detectSignals({ company: null, pages: [{ sourceId: src.id, page: parsed }], texts: [], registrySourceId: null, websiteAttempted: true });
+        competitorPages.push({ sourceId: src.id, name: candidate.title, url: doc.finalUrl, features: a.features });
       } catch (err) {
         limitations.push(`Konkurrentsiden ${candidate.url} kunne ikke hentes: ${isAppError(err) ? err.message : "ukendt fejl"}`);
       }
@@ -261,65 +308,89 @@ export async function runResearchJob(job: ResearchJob, company: Company, ds: Res
     await setStep(job.id, "competitors", "done", `${competitorPages.length} konkurrent(er) analyseret`);
   }
 
-  // 5. Signaler
+  // 5. Signaler og website-analyse
   await setStep(job.id, "signals", "running");
-  const analysis = detectSignals({ company, pages, texts, registrySourceId: registry.id, websiteAttempted });
-  await setStep(job.id, "signals", "done", `${analysis.features.length} funktioner · ${analysis.signals.length} signaler`);
+  const analysis = detectSignals({ company: primaryLegal, pages, texts, registrySourceId: primaryRegistrySourceId, websiteAttempted });
+  const websiteAnalysis = buildWebsiteAnalysis(pages, analysis.features, blocked);
+  let digitalMaturity = assessDigitalMaturity(websiteAnalysis);
+  await setStep(job.id, "signals", "done", `${analysis.features.length} funktioner observeret · ${analysis.signals.length} signaler`);
 
   // 6. Anbefalinger (deterministisk score)
   await setStep(job.id, "recommendations", "running");
-  const segment = segmentForIndustryCode(company.industry?.code);
+  const registrySegment = segmentForIndustryCode(primaryLegal?.industry?.code);
+  const textSegment: IndustrySegment = pages.length > 0 ? segmentFromText(pages.map((p) => `${p.page.title} ${p.page.description} ${p.page.headings.join(" ")} ${p.page.text}`).join(" ")) : "other";
+  const segment: IndustrySegment = registrySegment !== "other" ? registrySegment : textSegment;
+  const segmentBasis = registrySegment !== "other" ? ("registry" as const) : textSegment !== "other" ? ("website" as const) : ("unknown" as const);
+  const basisSourceIds = segmentBasis === "registry" && primaryRegistrySourceId ? [primaryRegistrySourceId] : pages.slice(0, 1).map((p) => p.sourceId);
   const recommendations = buildRecommendations({
-    company,
+    brandName: brand.name,
+    industryText: segmentBasis === "registry" ? (primaryLegal?.industry?.text ?? null) : segmentBasis === "website" ? INDUSTRY_SEGMENT_LABELS[segment] : null,
     segment,
+    segmentBasis,
     catalog: DEFAULT_SERVICE_CATALOG,
     signals: analysis.signals,
-    registrySourceId: registry.id,
+    basisSourceIds,
     limitations: limitations.filter((l) => !l.startsWith("Demo Mode")),
   });
   const opportunities = buildOpportunities(recommendations, DEFAULT_SERVICE_CATALOG);
+  if (recommendations.length < 5) limitations.push(`Datagrundlaget understøtter ${recommendations.length} anbefaling(er). Der er bevidst ikke fyldt op med generiske forslag.`);
   await setStep(job.id, "recommendations", "done", `${recommendations.length} services anbefalet`);
 
   // 7. Analyse
   await setStep(job.id, "analysis", "running", ds.useAi ? "Claude analyserer kilderne" : "Regelbaseret analyse");
-  const rulesInput = { company, segment, registrySourceId: registry.id, pages, analysis, competitorPages };
+  const rulesInput = { brandName: brand.name, company: primaryLegal, segment, segmentBasis, registrySourceId: primaryRegistrySourceId, pages, analysis, competitorPages };
   let profile = buildRulesProfile(rulesInput);
   let competitors = buildRulesCompetitors(rulesInput);
   let summary = buildRulesSummary(rulesInput, recommendations.length);
+  const extraQuestions: string[] = [];
+  if (input.confirmedLegalEntities.length === 0) extraQuestions.push("Hvilken juridisk enhed (CVR) skal et eventuelt samarbejde og tilbud udstedes til?");
+  let meetingQuestions = buildMeetingQuestions(recommendations, extraQuestions);
+  let overallRecommendation = buildOverallRecommendation(brand.name, recommendations);
   let engine: ResearchReport["analysisEngine"] = ds.isDemo ? "demo" : "rules";
   let model: string | null = null;
 
   if (ds.isDemo) {
-    summary = getDemoDatasetByCvr(company.cvr)?.summary ?? summary;
+    summary = demoSummaryFor(input.websites.map((w) => w.url)) ?? summary;
     await setStep(job.id, "analysis", "done", "Demo-analyse (regelbaseret på fiktive kilder)");
   } else if (ds.useAi) {
     try {
-      const ai = await runClaudeAnalysis({ company, sources, features: analysis.features, signals: analysis.signals, recommendations });
+      const ai = await runClaudeAnalysis({ brandName: brand.name, websites: input.websites.map((w) => w.url), legalEntity: primaryLegal, sources, websiteAnalysis, signals: analysis.signals, recommendations });
       engine = "claude";
       model = ai.model;
       summary = ai.summary || summary;
-      // AI-profil bruges, men felter uden indhold beholder de regelbaserede fund.
-      profile = Object.fromEntries(
-        Object.entries(ai.profile).map(([k, v]) => [k, v.length > 0 ? v : profile[k as keyof typeof profile]]),
-      ) as typeof profile;
+      profile = Object.fromEntries(Object.entries(ai.profile).map(([k, v]) => [k, v.length > 0 ? v : profile[k as keyof typeof profile]])) as typeof profile;
       if (ai.competitors.length > 0) {
         const known = new Set(competitors.map((c) => c.name.toLowerCase()));
         competitors = [...competitors, ...ai.competitors.filter((c) => !known.has(c.name.toLowerCase()))];
       }
       for (const rec of recommendations) {
-        const relevance = ai.relevanceByCatalogId.get(rec.catalogItemId);
-        if (relevance) rec.relevance = relevance;
+        const note = ai.notesByCatalogId.get(rec.catalogItemId);
+        if (!note) continue;
+        rec.relevance = note.relevance;
+        if (note.proposedSolution) rec.proposedSolution = note.proposedSolution;
+        if (note.businessBenefit) rec.businessBenefit = note.businessBenefit;
+        if (note.customerQuestions.length) rec.customerQuestions = note.customerQuestions;
+        rec.uncertainties = Array.from(new Set([...rec.uncertainties, ...note.uncertainties])).slice(0, 6);
       }
       for (const opp of opportunities) {
-        const note = ai.opportunityNotes.find((n) => n.area === opp.area);
-        if (note) {
-          opp.description = note.description;
-          opp.classification = note.classification;
-          opp.sourceIds = Array.from(new Set([...opp.sourceIds, ...note.sourceIds]));
-        }
+        const note = ai.opportunities.find((n) => n.area === opp.area);
+        if (!note) continue;
+        Object.assign(opp, {
+          observed: note.observed,
+          potentialProblem: note.potentialProblem,
+          solution: note.solution,
+          value: note.value,
+          missingInformation: note.missingInformation,
+          description: `${note.observed} ${note.potentialProblem}`,
+          classification: note.classification,
+          sourceIds: Array.from(new Set([...opp.sourceIds, ...note.sourceIds])),
+        });
       }
+      if (ai.digitalMaturityRationale && digitalMaturity.level !== "unknown") digitalMaturity = { ...digitalMaturity, rationale: `${digitalMaturity.rationale} ${ai.digitalMaturityRationale}` };
+      if (ai.meetingQuestions.length > 0) meetingQuestions = Array.from(new Set([...extraQuestions, ...ai.meetingQuestions])).slice(0, 10);
+      if (ai.overallRecommendation) overallRecommendation = ai.overallRecommendation;
       if (ai.downgraded > 0) limitations.push(`${ai.downgraded} AI-påstand(e) uden gyldig kilde blev nedgraderet fra fakta til vurdering.`);
-      await setStep(job.id, "analysis", "done", `Claude (${model})`);
+      await setStep(job.id, "analysis", "done", `Claude (${model}) · est. ${ai.costUsd.toFixed(3)} USD`);
     } catch (err) {
       const message = isAppError(err) ? err.message : "ukendt fejl";
       limitations.push(`AI-analysen fejlede (${message}) — rapporten bygger på regelbaseret analyse.`);
@@ -335,9 +406,18 @@ export async function runResearchJob(job: ResearchJob, company: Company, ds: Res
   const now = nowIso();
   const report: ResearchReport = {
     id: newId("researchReport"),
-    companyId: company.id,
+    schemaVersion: 2,
+    brandId: brand.id,
+    companyId: primaryLegal?.id ?? null,
     jobId: job.id,
-    mode: company.mode,
+    mode: brand.mode,
+    researchBasis: ds.isDemo ? "demo" : "live",
+    brandSnapshot: { brandId: brand.id, name: brand.name, websites: input.websites.map((w) => w.url) },
+    legalEntities: snapshot,
+    websiteAnalysis,
+    digitalMaturity,
+    meetingQuestions,
+    overallRecommendation,
     analysisEngine: engine,
     analysisModel: model,
     summary,
@@ -359,9 +439,30 @@ export async function runResearchJob(job: ResearchJob, company: Company, ds: Res
   await publishEvent({
     type: "research.completed",
     source: "research",
-    mode: company.mode,
-    subject: { companyId: company.id, reportId: report.id, jobId: job.id },
-    payload: { engine, recommendations: recommendations.length, sources: sources.length },
+    mode: brand.mode,
+    subject: { companyId: primaryLegal?.id, reportId: report.id, jobId: job.id },
+    payload: { brandId: brand.id, engine, recommendations: recommendations.length, sources: sources.length },
   });
   return report;
+}
+
+/** Bygger relationssnapshot til rapporten (inkl. antal arbejdssteder). */
+export async function buildRelationSnapshot(relations: Array<{ status: "suggested" | "confirmed" | "rejected"; legalEntity: Company }>): Promise<NonNullable<ResearchReport["legalEntities"]>> {
+  const out: NonNullable<ResearchReport["legalEntities"]> = [];
+  for (const r of relations) {
+    if (r.status === "rejected") continue;
+    const est = await establishmentRegistry.forLegalEntity(r.legalEntity.id);
+    out.push({
+      legalEntityId: r.legalEntity.id,
+      cvr: r.legalEntity.cvr,
+      name: r.legalEntity.name,
+      status: r.status,
+      industry: r.legalEntity.industry?.text ?? null,
+      companyForm: r.legalEntity.companyForm?.text ?? null,
+      address: formatAddress(r.legalEntity),
+      establishments: est.length,
+      sourceId: null,
+    });
+  }
+  return out;
 }

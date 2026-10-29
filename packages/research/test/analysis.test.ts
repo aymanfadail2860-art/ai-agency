@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_SERVICE_CATALOG, type Company } from "@agency/core";
-import { buildRecommendations, detectSignals, parseHtmlPage, sanitizeClaudeAnalysis, scoreService, segmentForIndustryCode } from "@agency/research/server";
+import { buildRecommendations, detectSignals, extractBrandName, extractCvrMentions, normalizeResearchUrl, parseHtmlPage, sanitizeClaudeAnalysis, scoreService, segmentForIndustryCode, segmentFromText } from "@agency/research/server";
 
 const company = {
   id: "cmp_x", cvr: "00000001", name: "Test ApS", mode: "demo", address: null,
@@ -45,7 +45,7 @@ describe("AI Opportunity Score", () => {
   const item = DEFAULT_SERVICE_CATALOG.find((i) => i.id === "svc_booking_automation")!;
   it("er gennemsigtig: fire vægtede kriterier, der summerer til totalen", () => {
     const score = scoreService({ item, segment: "health", matchedSignals: [] });
-    expect(score.criteria.map((c) => c.key)).toEqual(["observed_gap", "industry_fit", "evidence", "implementation_ease"]);
+    expect(score.criteria.map((c) => c.key)).toEqual(["relevance", "business_value", "evidence", "implementation_ease"]);
     expect(score.criteria.reduce((s, c) => s + c.weight, 0)).toBeCloseTo(1);
     expect(score.total).toBe(Math.round(score.criteria.reduce((s, c) => s + c.value * c.weight, 0)));
   });
@@ -55,7 +55,7 @@ describe("AI Opportunity Score", () => {
     expect(some.total).toBeGreaterThan(none.total);
   });
   it("markerer anbefalinger uden observerede signaler som hypotese", () => {
-    const recs = buildRecommendations({ company, segment: "health", catalog: DEFAULT_SERVICE_CATALOG, signals: [], registrySourceId: "src_r", limitations: [] });
+    const recs = buildRecommendations({ brandName: "Test", industryText: "Tandlæger", segment: "health", segmentBasis: "registry", catalog: DEFAULT_SERVICE_CATALOG, signals: [], basisSourceIds: ["src_r"], limitations: [] });
     expect(recs.length).toBeGreaterThan(0);
     for (const r of recs) expect(r.findings.some((f) => f.classification === "hypothesis")).toBe(true);
   });
@@ -64,24 +64,68 @@ describe("AI Opportunity Score", () => {
 describe("validering af AI-output", () => {
   it("nedgraderer fakta uden gyldig kilde og kasserer konkurrenter uden kilde", () => {
     const claim = (text: string, sourceIds: string[]) => ({ text, classification: "fact" as const, sourceIds });
+    const empty = { whatTheyDo: [], valueCreation: [], customers: [], contactChannels: [], digitalProcesses: [], productsAndServices: [], businessModel: [], strengths: [], weaknesses: [] };
     const out = sanitizeClaudeAnalysis(
       {
         summary: "Resumé",
-        profile: { activities: [claim("Ok", ["src_1"]), claim("Opdigtet", ["src_fake"])], productsAndServices: [], targetGroups: [], businessModel: [], digitalPresence: [], strengths: [], weaknesses: [] },
+        brandUnderstanding: { ...empty, whatTheyDo: [claim("Ok", ["src_1"]), claim("Opdigtet", ["src_fake"])] },
+        opportunities: [],
+        recommendationNotes: [{ catalogItemId: "svc_unknown", relevance: "x", proposedSolution: "", businessBenefit: "", uncertainties: [], customerQuestions: [] }],
         competitors: [
           { name: "Rigtig", url: "https://r.example", observedFeatures: [], comparison: "x", sourceIds: ["src_1"] },
           { name: "Opdigtet A/S", url: null, observedFeatures: [], comparison: "x", sourceIds: [] },
         ],
-        opportunityNotes: [],
-        recommendationNotes: [{ catalogItemId: "svc_unknown", relevance: "x" }],
+        digitalMaturityRationale: "",
+        meetingQuestions: ["Q1"],
+        overallRecommendation: "Start med X.",
       },
-      { company, sources: [{ id: "src_1", kind: "website", title: "t", url: null, provider: "p", retrievedAt: new Date().toISOString(), excerpt: "", isDemo: true }], features: [], signals: [], recommendations: [] },
+      {
+        brandName: "Test",
+        websites: [],
+        legalEntity: company,
+        sources: [{ id: "src_1", kind: "website", title: "t", url: null, provider: "p", retrievedAt: new Date().toISOString(), excerpt: "", isDemo: true }],
+        websiteAnalysis: { pages: [], features: [], blocked: [] },
+        signals: [],
+        recommendations: [],
+      },
     );
     expect(out.profile.activities[0].classification).toBe("fact");
     expect(out.profile.activities[1].classification).toBe("assessment");
     expect(out.profile.activities[1].sourceIds).toEqual([]);
     expect(out.downgraded).toBe(1);
     expect(out.competitors.map((c) => c.name)).toEqual(["Rigtig"]);
-    expect(out.relevanceByCatalogId.size).toBe(0);
+    expect(out.notesByCatalogId.size).toBe(0);
+    expect(out.meetingQuestions).toEqual(["Q1"]);
+  });
+});
+
+describe("URL, brandnavn og CVR-omtaler", () => {
+  it("normaliserer brugerindtastede adresser", () => {
+    expect(normalizeResearchUrl("Eksempel.DK")).toEqual({ url: "https://eksempel.dk/", domain: "eksempel.dk" });
+    expect(normalizeResearchUrl("http://www.eksempel.dk/om-os/?utm=1#top")).toEqual({ url: "http://www.eksempel.dk/om-os", domain: "eksempel.dk" });
+    expect(() => normalizeResearchUrl("ikke en url")).toThrow();
+    expect(() => normalizeResearchUrl("localhost")).toThrow();
+    expect(() => normalizeResearchUrl("ftp://eksempel.dk")).toThrow();
+  });
+
+  it("udleder brandnavn fra og:site_name eller titel", () => {
+    const a = parseHtmlPage('<head><meta property="og:site_name" content="Fjordhuset Café"><title>Brunch | Fjordhuset</title></head>', "https://x.example/");
+    expect(extractBrandName(a, "x.example")).toBe("Fjordhuset Café");
+    const b = parseHtmlPage("<head><title>Tandlæge i Odense — Klinik Havblik</title></head>", "https://havblik.example/");
+    expect(extractBrandName(b, "havblik.example")).toBe("Klinik Havblik");
+  });
+
+  it("finder kun gyldige CVR-numre (modulus 11) på siden", () => {
+    const page = parseHtmlPage("<body>Novo Nordisk A/S · CVR-nr. 24 25 67 90 · Ugyldigt: CVR 12345678 · Telefon 44448888</body>", "https://x.dk/");
+    expect(extractCvrMentions([{ sourceId: "s", page }]).map((m) => m.cvr)).toEqual(["24256790"]);
+    const demo = parseHtmlPage("<body>CVR 00000004</body>", "https://x.example/");
+    expect(extractCvrMentions([{ sourceId: "s", page: demo }])).toHaveLength(0);
+    expect(extractCvrMentions([{ sourceId: "s", page: demo }], true).map((m) => m.cvr)).toEqual(["00000004"]);
+  });
+
+  it("vurderer segment ud fra hjemmesidens tekst", () => {
+    expect(segmentFromText("Vi er din lokale VVS-installatør")).toBe("trades");
+    expect(segmentFromText("Book tid hos tandlægen")).toBe("health");
+    expect(segmentFromText("Lorem ipsum")).toBe("other");
   });
 });

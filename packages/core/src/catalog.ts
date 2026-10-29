@@ -22,7 +22,7 @@ function fit(values: Fit, fallback = 0.4): Record<IndustrySegment, number> {
   return Object.fromEntries(segments.map((s) => [s, values[s] ?? fallback])) as Record<IndustrySegment, number>;
 }
 
-export const DEFAULT_SERVICE_CATALOG: readonly ServiceCatalogItem[] = [
+const BASE_CATALOG: readonly ServiceCatalogItem[] = [
   {
     id: "svc_ai_receptionist",
     name: "AI-receptionist",
@@ -344,3 +344,78 @@ export const DEFAULT_SERVICE_CATALOG: readonly ServiceCatalogItem[] = [
 export function findDefaultCatalogItem(id: string): ServiceCatalogItem | undefined {
   return DEFAULT_SERVICE_CATALOG.find((item) => item.id === id);
 }
+
+/**
+ * V2-INDSIGTER PR. SERVICE
+ * valueBase er en kvalitativ vurdering (0-100) af servicens typiske
+ * forretningsværdi, når behovet er til stede — ikke et økonomisk løfte.
+ */
+const V2_INSIGHTS: Record<string, { proposedSolution: string; valueBase: number; customerQuestions: string[] }> = {
+  svc_ai_receptionist: {
+    proposedSolution: "En AI-receptionist besvarer opkald i og uden for åbningstid, afklarer behovet og registrerer eller booker henvendelsen.",
+    valueBase: 75,
+    customerQuestions: ["Hvor mange opkald modtager I typisk om ugen, og hvor mange når I ikke at besvare?", "Hvem tager telefonen i dag, og hvad sker der uden for åbningstid?", "Hvilke henvendelser kræver altid en medarbejder?"],
+  },
+  svc_ai_chatbot: {
+    proposedSolution: "En AI-chatbot på hjemmesiden besvarer spørgsmål ud fra jeres eget indhold og samler kontaktoplysninger op.",
+    valueBase: 60,
+    customerQuestions: ["Hvilke spørgsmål får I oftest fra kunder?", "Hvor hurtigt svarer I i dag på henvendelser via hjemmesiden?", "Må chatbotten tilbyde booking eller tilbud, eller kun informere?"],
+  },
+  svc_ai_customer_service: {
+    proposedSolution: "AI kategoriserer indgående henvendelser og skriver svarudkast, som jeres medarbejdere godkender.",
+    valueBase: 70,
+    customerQuestions: ["Hvor mange e-mails og supporthenvendelser håndterer I om ugen?", "Hvilket system bruger I til indbakke eller helpdesk?", "Hvad er jeres nuværende svartid?"],
+  },
+  svc_lead_management: {
+    proposedSolution: "Leads fra alle kanaler samles, kvalificeres med AI og følges op automatisk.",
+    valueBase: 75,
+    customerQuestions: ["Hvor kommer jeres nye kunder fra i dag?", "Hvordan registreres og følges en ny henvendelse op?", "Hvor mange tilbud sender I om måneden?"],
+  },
+  svc_crm_system: {
+    proposedSolution: "Et CRM tilpasset jeres salgsproces samler kunder, aktiviteter og pipeline ét sted.",
+    valueBase: 65,
+    customerQuestions: ["Hvor gemmer I kundeoplysninger og salgsaktiviteter i dag?", "Hvor mange personer arbejder med salg og kundekontakt?", "Hvilke systemer skal CRM'et spille sammen med?"],
+  },
+  svc_sales_automation: {
+    proposedSolution: "Automatiske opfølgningsflows og AI-udkast til salgsmails sikrer ensartet opfølgning.",
+    valueBase: 65,
+    customerQuestions: ["Hvordan følger I op på sendte tilbud?", "Hvor meget tid bruger sælgerne på administration?", "Hvilke trin i salgsprocessen gentages oftest?"],
+  },
+  svc_marketing_automation: {
+    proposedSolution: "Nyhedsbreve, segmentering og AI-assisteret indhold holder løbende kontakt med kunder og leads.",
+    valueBase: 55,
+    customerQuestions: ["Har I en samtykkebaseret kundeliste?", "Hvor ofte kommunikerer I med eksisterende kunder?", "Hvem producerer jeres indhold i dag?"],
+  },
+  svc_booking_automation: {
+    proposedSolution: "Online booking med automatiske bekræftelser og påmindelser lader kunder bestille tid døgnet rundt.",
+    valueBase: 70,
+    customerQuestions: ["Hvordan bookes tider i dag, og hvor lang tid tager det pr. booking?", "Hvor ofte udebliver kunder?", "Hvilken kalender bruger I?"],
+  },
+  svc_workflow_automation: {
+    proposedSolution: "Gentagne administrative processer — fx ordrer, fakturering og dokumenter — automatiseres med fejlhåndtering.",
+    valueBase: 70,
+    customerQuestions: ["Hvilke administrative opgaver tager mest tid hver uge?", "Hvor indtastes de samme data flere gange?", "Hvilke systemer indgår i processerne?"],
+  },
+  svc_ai_agents: {
+    proposedSolution: "AI-agenter løser afgrænsede vidensopgaver med menneskelig godkendelse, fx dokumentbehandling eller sagsforberedelse.",
+    valueBase: 65,
+    customerQuestions: ["Hvilke opgaver kræver i dag, at en specialist læser og behandler dokumenter?", "Findes der eksempeldata, vi kan teste på?", "Hvilke krav er der til godkendelse og sporbarhed?"],
+  },
+  svc_business_intelligence: {
+    proposedSolution: "Data fra eksisterende systemer samles i dashboards og automatiske rapporter.",
+    valueBase: 55,
+    customerQuestions: ["Hvilke nøgletal følger ledelsen i dag, og hvordan?", "Hvor mange timer går med manuel rapportering?", "Hvilke datakilder skal indgå?"],
+  },
+  svc_custom_software: {
+    proposedSolution: "En skræddersyet webapplikation eller kundeportal understøtter arbejdsgange, standardsoftware ikke dækker.",
+    valueBase: 50,
+    customerQuestions: ["Hvilke arbejdsgange understøttes dårligt af jeres nuværende systemer?", "Hvem vil bruge løsningen — medarbejdere, kunder eller partnere?", "Er der et budget og en tidsramme?"],
+  },
+  svc_system_integration: {
+    proposedSolution: "Integrationer mellem fx webshop, økonomi og CRM fjerner dobbeltindtastning.",
+    valueBase: 65,
+    customerQuestions: ["Hvilke systemer bruger I, og hvilke data flyttes manuelt mellem dem?", "Har systemerne API-adgang?", "Hvor ofte opstår fejl pga. manuel indtastning?"],
+  },
+};
+
+export const DEFAULT_SERVICE_CATALOG: readonly ServiceCatalogItem[] = BASE_CATALOG.map((item) => ({ ...item, ...(V2_INSIGHTS[item.id] ?? {}) }));

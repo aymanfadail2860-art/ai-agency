@@ -1,8 +1,8 @@
 import { AppError } from "@agency/shared";
 import { integrationConfig } from "../config";
 import { httpRequest, isAbortError } from "../http/client";
-import { mapVrvirksomhed } from "./mapper";
-import type { CvrProvider, CvrRecord } from "./types";
+import { mapVrvirksomhedLookup } from "./mapper";
+import type { CvrProvider } from "./types";
 
 /**
  * CVR-opslag direkte mod Erhvervsstyrelsens "System-til-system"-adgang
@@ -13,7 +13,7 @@ export function createVirkProvider(transport = httpRequest): CvrProvider {
     key: "virk.dk",
     name: "Erhvervsstyrelsen (distribution.virk.dk)",
     isConfigured: () => Boolean(integrationConfig.virkUsername() && integrationConfig.virkPassword()),
-    async lookup(cvr: string): Promise<CvrRecord> {
+    async lookup(cvr: string) {
       const user = integrationConfig.virkUsername();
       const pass = integrationConfig.virkPassword();
       if (!user || !pass) throw new AppError("integration_not_configured", "CVR_VIRK_USERNAME/CVR_VIRK_PASSWORD er ikke konfigureret.");
@@ -38,7 +38,14 @@ export function createVirkProvider(transport = httpRequest): CvrProvider {
       const data = (await res.json()) as { hits?: { hits?: Array<{ _source?: { Vrvirksomhed?: Record<string, unknown> } }> } };
       const hit = data.hits?.hits?.[0]?._source?.Vrvirksomhed;
       if (!hit) throw new AppError("upstream_not_found", `CVR-nummer ${cvr} blev ikke fundet i CVR-registret.`);
-      return mapVrvirksomhed(hit, "virk.dk", `https://datacvr.virk.dk/enhed/virksomhed/${cvr}`);
+      return mapVrvirksomhedLookup(hit, "virk.dk", `https://datacvr.virk.dk/enhed/virksomhed/${cvr}`);
+    },
+    // Arbejdssteder og navnesøgning er endnu ikke implementeret for virk.dk-adapteren.
+    async establishment() {
+      return null;
+    },
+    async searchByName() {
+      return [];
     },
   };
 }

@@ -74,6 +74,21 @@ const FEATURE_PATTERNS: Array<{ key: string; label: string; patterns: RegExp[] }
     patterns: [/cdn\.shopify\.com|shopify/, /woocommerce/, /læg i kurv|tilføj til kurv|add to cart/, /dandomain|smartweb|wannafind/, /\/kurv|\/cart\b/],
   },
   {
+    key: "customer_portal",
+    label: "Kundeportal / login",
+    patterns: [/min side|mine sider|kundeportal|kundelogin|log ind|my account|\/login\b|\/account\b/],
+  },
+  {
+    key: "self_service",
+    label: "Selvbetjening (FAQ/hjælpecenter)",
+    patterns: [/ofte stillede spørgsmål|\bfaq\b|hjælpecenter|help center|spor din pakke|track (?:your )?order|selvbetjening/],
+  },
+  {
+    key: "integrations",
+    label: "Synlige integrationer/værktøjer",
+    patterns: [/trustpilot\.com|widget\.trustpilot/, /calendly\.com/, /stripe\.com|js\.stripe/, /cdn\.shopify\.com/, /klaviyo/, /js\.hs-scripts|hubspot/, /mailchimp|list-manage\.com/, /quickpay|nets\.eu|reepay/],
+  },
+  {
     key: "cookie_consent",
     label: "Cookiesamtykke",
     patterns: [/cookiebot|cookieinformation|cookie-consent|onetrust|cookieyes/],
@@ -104,10 +119,11 @@ export interface SignalAnalysis {
 }
 
 export function detectSignals(input: {
-  company: Company;
+  /** V2: juridisk enhed er valgfri (brand-first). */
+  company: Company | null;
   pages: PageWithSource[];
   texts: TextWithSource[];
-  registrySourceId: string;
+  registrySourceId: string | null;
   websiteAttempted: boolean;
 }): SignalAnalysis {
   const { pages, texts } = input;
@@ -198,14 +214,14 @@ export function detectSignals(input: {
       const f = features.find((x) => x.key === "ecommerce")!;
       signals.push({ key: "has_ecommerce", label: "Driver webshop", evidence: f.evidence, sourceIds: f.sourceIds, classification: "fact" });
     }
-  } else if (input.websiteAttempted || !input.company.contact.website) {
+  } else if (input.websiteAttempted || !input.company?.contact.website) {
     signals.push({
       key: "no_website",
       label: "Ingen hjemmeside undersøgt",
-      evidence: input.company.contact.website
+      evidence: input.websiteAttempted
         ? "Hjemmesiden kunne ikke hentes, så digitale funktioner er ikke vurderet."
-        : "Der er ikke registreret en hjemmeside i CVR, og ingen blev angivet.",
-      sourceIds: [input.registrySourceId],
+        : "Der er ikke registreret eller angivet en hjemmeside.",
+      sourceIds: input.registrySourceId ? [input.registrySourceId] : [],
       classification: "assessment",
     });
   }
@@ -234,8 +250,8 @@ export function detectSignals(input: {
     });
   }
 
-  const employees = input.company.employees?.count ?? null;
-  if (employees !== null && employees >= 50) {
+  const employees = input.company?.employees?.count ?? null;
+  if (input.company && input.registrySourceId && employees !== null && employees >= 50) {
     signals.push({
       key: "large_workforce",
       label: "Større medarbejderstab",

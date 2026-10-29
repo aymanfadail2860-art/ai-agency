@@ -50,3 +50,25 @@ export function segmentForIndustryCode(code: string | null | undefined): Industr
   if (twoDigit >= 10 && twoDigit <= 33) return "manufacturing";
   return "other";
 }
+
+/** V2: Segment ud fra hjemmesidens tekst, når CVR-branche ikke kendes (altid en vurdering). */
+const TEXT_SEGMENTS: Array<[IndustrySegment, RegExp]> = [
+  ["health", /tandlæge|tandklinik|klinik|fysioterap|læge|kiropraktor|psykolog|behandling(er)?\b/i],
+  ["beauty", /frisør|skønhed|kosmetolog|negle|spa\b|vipper|massage/i],
+  ["fitness", /fitness|træningscenter|crossfit|yoga|personlig træner/i],
+  ["trades", /vvs|elektriker|tømrer|murer|maler|blikkenslager|varmepumpe|entreprenør|håndværk/i],
+  ["auto", /autoværksted|bilforhandler|dæk|bilsyn|autoservice/i],
+  ["hospitality", /restaurant|café|cafe|hotel|bryggeri|catering|selskabslokale|bar\b/i],
+  ["ecommerce", /læg i kurv|add to cart|webshop|fri fragt|gratis fragt/i],
+  ["real_estate", /ejendomsmægler|bolig til salg|udlejning|ejendomsadministration/i],
+  ["professional_services", /advokat|revisor|rådgivning|konsulent|bogføring|arkitekt/i],
+  ["it", /software|saas|it-løsning|hosting|app-udvikling|webbureau/i],
+  ["education", /kursus|uddannelse|undervisning|skole|akademi/i],
+  ["transport", /fragt|logistik|vognmand|transport|kurer/i],
+  ["manufacturing", /produktion|fabrik|maskiner|industri/i],
+  ["retail", /butik|forretning|sortiment/i],
+];
+
+export function segmentFromText(text: string): IndustrySegment {
+  return TEXT_SEGMENTS.find(([, re]) => re.test(text))?.[0] ?? "other";
+}

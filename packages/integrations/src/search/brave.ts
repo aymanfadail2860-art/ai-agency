@@ -1,3 +1,4 @@
+import { assertWithinBudget, recordUsage } from "@agency/core/server";
 import { AppError } from "@agency/shared";
 import { integrationConfig } from "../config";
 import { httpRequest, isAbortError } from "../http/client";
@@ -36,6 +37,7 @@ export function createBraveSearchProvider(transport = httpRequest): SearchProvid
         search_lang: "da",
         safesearch: "moderate",
       });
+      await assertWithinBudget("brave");
       let res;
       try {
         res = await transport(`https://api.search.brave.com/res/v1/web/search?${params}`, {
@@ -46,6 +48,7 @@ export function createBraveSearchProvider(transport = httpRequest): SearchProvid
         if (isAbortError(err)) throw new AppError("timeout", "Websøgningen tog for lang tid.");
         throw new AppError("integration_error", "Søgetjenesten kunne ikke kontaktes.");
       }
+      await recordUsage("brave", { calls: 1, errors: res.ok ? 0 : 1 });
       if (!res.ok) throw new AppError("integration_error", `Søgetjenesten svarede med status ${res.status}.`);
       const data = (await res.json()) as { web?: { results?: Array<{ title?: string; url?: string; description?: string; age?: string }> } };
       return (data.web?.results ?? [])

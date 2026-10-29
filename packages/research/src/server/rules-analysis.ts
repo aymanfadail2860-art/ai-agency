@@ -57,9 +57,12 @@ const BUSINESS_MODEL_HYPOTHESES: Partial<Record<IndustrySegment, string>> = {
 };
 
 export interface RulesAnalysisInput {
-  company: Company;
+  brandName: string;
+  /** V2: juridisk enhed er valgfri — kun bekræftede relationer bruges. */
+  company: Company | null;
   segment: IndustrySegment;
-  registrySourceId: string;
+  segmentBasis: "registry" | "website" | "unknown";
+  registrySourceId: string | null;
   pages: PageWithSource[];
   analysis: SignalAnalysis;
   competitorPages: Array<{ sourceId: string; name: string; url: string; features: ObservedFeature[] }>;
@@ -76,13 +79,14 @@ export function buildRulesProfile(input: RulesAnalysisInput): CompanyProfile {
     strengths: [],
     weaknesses: [],
   };
+  const basis = registrySourceId ? [registrySourceId] : pages.slice(0, 1).map((p) => p.sourceId);
 
-  if (company.industry) {
+  if (company?.industry && registrySourceId) {
     profile.activities.push(
       f(`Registreret hovedbranche i CVR: ${company.industry.text}${company.industry.code ? ` (${company.industry.code})` : ""}.`, "fact", [registrySourceId]),
     );
   }
-  if (company.companyForm || company.employees?.count != null) {
+  if (company && registrySourceId && (company.companyForm || company.employees?.count != null)) {
     const parts = [
       company.companyForm ? `virksomhedsform: ${company.companyForm.text}` : null,
       company.employees?.count != null ? `${company.employees.count} ansatte (${company.employees.year ?? "seneste opgørelse"})` : company.employees?.interval ? `ansatte-interval ${company.employees.interval}` : null,
@@ -108,16 +112,18 @@ export function buildRulesProfile(input: RulesAnalysisInput): CompanyProfile {
   }
 
   const tg = TARGET_GROUP_HYPOTHESES[segment];
-  if (tg) profile.targetGroups.push(f(`${tg} (Udledt af branchesegmentet "${INDUSTRY_SEGMENT_LABELS[segment]}".)`, "hypothesis", [registrySourceId]));
+  if (tg) profile.targetGroups.push(f(`${tg} (Udledt af branchesegmentet "${INDUSTRY_SEGMENT_LABELS[segment]}".)`, "hypothesis", basis));
   const bm = BUSINESS_MODEL_HYPOTHESES[segment];
-  if (bm) profile.businessModel.push(f(`${bm} (Typisk for branchen — ikke verificeret.)`, "hypothesis", [registrySourceId]));
+  if (bm) profile.businessModel.push(f(`${bm} (Typisk for branchen — ikke verificeret.)`, "hypothesis", basis));
+  if (!tg) profile.targetGroups.push(f("Målgruppen kan ikke afgøres ud fra kilderne.", "unknown", []));
+  if (!bm) profile.businessModel.push(f("Forretningsmodellen kan ikke afgøres ud fra kilderne.", "unknown", []));
   const ecommerce = analysis.features.find((x) => x.key === "ecommerce");
   if (ecommerce) profile.businessModel.push(f(`Der drives webshop: ${ecommerce.evidence}`, "fact", ecommerce.sourceIds));
 
   if (pages.length > 0) {
     profile.digitalPresence.push(f(`Officiel hjemmeside undersøgt: ${pages.length} side(r) på ${new URL(pages[0].page.url).hostname}.`, "fact", pages.map((p) => p.sourceId)));
   } else {
-    profile.digitalPresence.push(f("Ingen hjemmeside blev undersøgt.", "fact", [registrySourceId]));
+    profile.digitalPresence.push(f("Ingen hjemmeside blev undersøgt — digital tilstedeværelse er ukendt.", "unknown", []));
   }
   for (const feature of analysis.features) {
     profile.digitalPresence.push(f(feature.evidence, "fact", feature.sourceIds));
@@ -150,8 +156,8 @@ export function buildRulesCompetitors(input: RulesAnalysisInput): Competitor[] {
     const advantages = c.features.filter((x) => !own.has(x.key)).map((x) => x.label.toLowerCase());
     const comparison =
       advantages.length > 0
-        ? `Har ${advantages.join(", ")}, som ikke blev fundet hos ${input.company.name}.`
-        : `Ingen observerbare digitale funktioner, som ${input.company.name} ikke også har.`;
+        ? `Har ${advantages.join(", ")}, som ikke blev observeret hos ${input.brandName}. Det siger intet om konkurrentens interne systemer.`
+        : `Ingen observerbare digitale funktioner, som ${input.brandName} ikke også har.`;
     return {
       id: newId("competitor"),
       name: c.name,
@@ -165,13 +171,14 @@ export function buildRulesCompetitors(input: RulesAnalysisInput): Competitor[] {
 }
 
 export function buildRulesSummary(input: RulesAnalysisInput, recommendationCount: number): string {
-  const { company, segment, analysis, pages } = input;
+  const { company, segment, analysis, pages, brandName } = input;
+  const industry = company?.industry?.text ? `er registreret i CVR under "${company.industry.text}"` : `vurderes ud fra ${pages.length > 0 ? "hjemmesiden" : "det tilgængelige grundlag"} at høre til segmentet "${INDUSTRY_SEGMENT_LABELS[segment].toLowerCase()}"`;
   const parts = [
-    `${company.name} er registreret i CVR under "${company.industry?.text ?? "ukendt branche"}" (segment: ${INDUSTRY_SEGMENT_LABELS[segment].toLowerCase()}).`,
+    `${brandName} ${industry}${company ? ` (juridisk enhed: ${company.name}, CVR ${company.cvr})` : " (juridisk enhed ikke bekræftet)"}.`,
     pages.length > 0
-      ? `Researchen undersøgte ${pages.length} side(r) på virksomhedens hjemmeside og fandt ${analysis.features.length} digitale funktioner samt ${analysis.signals.length} signaler om mulige forbedringsområder.`
+      ? `Researchen undersøgte ${pages.length} side(r) på hjemmesiden og observerede ${analysis.features.length} digitale funktioner samt ${analysis.signals.length} signaler om mulige forbedringsområder.`
       : "Hjemmesiden blev ikke undersøgt, så vurderingen bygger primært på registerdata.",
-    `Der er udvalgt ${recommendationCount} relevante services fra bureauets katalog. Analysen er regelbaseret (uden AI) og skelner mellem fakta, vurderinger og hypoteser.`,
+    `Der er udvalgt ${recommendationCount} relevante services fra bureauets katalog. Analysen er regelbaseret (uden AI) og skelner mellem fakta, vurderinger, hypoteser og ukendte forhold.`,
   ];
   return parts.join(" ");
 }

@@ -9,6 +9,8 @@ export interface ParsedLink {
 export interface ParsedPage {
   url: string;
   title: string;
+  /** og:site_name eller application-name, hvis angivet. */
+  siteName: string;
   description: string;
   headings: string[];
   text: string;
@@ -31,6 +33,11 @@ export function parseHtmlPage(html: string, pageUrl: string): ParsedPage {
   const description = collapseWhitespace(
     root.querySelector('meta[name="description"]')?.getAttribute("content") ??
       root.querySelector('meta[property="og:description"]')?.getAttribute("content") ??
+      "",
+  );
+  const siteName = collapseWhitespace(
+    root.querySelector('meta[property="og:site_name"]')?.getAttribute("content") ??
+      root.querySelector('meta[name="application-name"]')?.getAttribute("content") ??
       "",
   );
   const headings = root
@@ -71,6 +78,7 @@ export function parseHtmlPage(html: string, pageUrl: string): ParsedPage {
   return {
     url: pageUrl,
     title,
+    siteName,
     description,
     headings: Array.from(new Set(headings)).slice(0, 30),
     text: truncate(bodyText, 6000),
@@ -85,12 +93,16 @@ export function parseHtmlPage(html: string, pageUrl: string): ParsedPage {
 }
 
 const PRIORITY_PATHS = [
-  /om-?os|about|virksomhed/i,
-  /ydelser|services|produkter|products|loesninger|løsninger|behandlinger/i,
-  /kontakt|contact/i,
-  /priser|pris|prices/i,
-  /job|karriere|career|ledige/i,
+  /om-?os|about|virksomhed|hvem-er-vi/i,
+  /ydelser|services|loesninger|løsninger|behandlinger/i,
+  /produkter|products|shop|sortiment|kollektion/i,
+  /priser|pris|prices|pricing/i,
   /booking|book|bestil/i,
+  /kontakt|contact/i,
+  /faq|ofte-stillede|spoergsmaal|spørgsmål|hjaelp|hjælp|help/i,
+  /handelsbetingelser|betingelser|terms|vilkaar|vilkår/i,
+  /privatliv|privacy|persondata|cookie/i,
+  /job|karriere|career|ledige/i,
 ];
 
 /** Udvælger op til `max` relevante undersider på samme domæne. */

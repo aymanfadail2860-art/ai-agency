@@ -40,7 +40,7 @@ const page = (title: string, description: string, body: string, extraHead = "") 
 /* -------------------------------------------------------------------------- */
 
 const nordlysNav = `<nav><a href="/">Forside</a> <a href="/ydelser">Ydelser</a> <a href="/om-os">Om os</a> <a href="/kontakt">Kontakt</a> <a href="/job">Job</a></nav>`;
-const nordlysFooter = `<footer>Nordlys VVS &amp; Energi ApS · Industrivej 12, 8260 Viby J · Tlf. <a href="tel:+4586120000">86 12 00 00</a> · <a href="https://www.facebook.com/nordlysvvs.example">Facebook</a></footer>`;
+const nordlysFooter = `<footer>Nordlys VVS &amp; Energi ApS · CVR-nr. 00000001 · Industrivej 12, 8260 Viby J · Tlf. <a href="tel:+4586120000">86 12 00 00</a> · <a href="https://www.facebook.com/nordlysvvs.example">Facebook</a></footer>`;
 const ga = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-DEMO"></script>`;
 
 const NORDLYS: DemoDataset = {
@@ -226,7 +226,7 @@ const HAVBLIK: DemoDataset = {
 /* -------------------------------------------------------------------------- */
 
 const fjordNav = `<nav><a href="/">Forside</a> <a href="/produkter">Produkter</a> <a href="/om-os">Om os</a> <a href="/kontakt">Kontakt</a> <a href="/kurv">Kurv</a></nav>`;
-const fjordFooter = `<footer>Studio Fjord Interiør ApS · Vesterbrogade 101, 1620 København V · <a href="https://www.instagram.com/studiofjord.example">Instagram</a> <a href="https://www.linkedin.com/company/studiofjord-example">LinkedIn</a> · Tilmeld nyhedsbrev <form><input type="email" name="newsletter"></form></footer>`;
+const fjordFooter = `<footer>Studio Fjord Interiør ApS · CVR 00000003 · Vesterbrogade 101, 1620 København V · <a href="https://www.instagram.com/studiofjord.example">Instagram</a> <a href="https://www.linkedin.com/company/studiofjord-example">LinkedIn</a> · Tilmeld nyhedsbrev <form><input type="email" name="newsletter"></form></footer>`;
 const shop = `<script src="https://cdn.shopify.com/demo.js"></script>${ga}`;
 
 const FJORD: DemoDataset = {
@@ -300,7 +300,173 @@ const FJORD: DemoDataset = {
     "Studio Fjord Interiør ApS er en fiktiv webshop i København med 23 ansatte, der sælger nordisk boligindretning. Kundeservice foregår via e-mail med op til 48 timers svartid, og virksomheden rekrutterer til kundeservice og ordreadministration. En anmeldelse nævner lang svartid, og en observeret konkurrent har chatfunktion. Potentialet ligger i AI-kundeservice, chatbot og integration mellem webshop og økonomisystem. (DEMO)",
 };
 
-export const DEMO_DATASETS: readonly DemoDataset[] = [NORDLYS, HAVBLIK, FJORD];
+/* -------------------------------------------------------------------------- */
+/* V2-scenarier: flere brands under ét CVR og flere juridiske enheder bag ét brand */
+/* -------------------------------------------------------------------------- */
+
+const cafeFooter = `<footer>Fjordhuset Café drives af Fjordhuset Gruppen ApS · CVR 00000004 · Havnen 3, 8000 Aarhus C · Tlf. 70 70 10 10 · <a href="https://www.instagram.com/fjordhusetcafe.example">Instagram</a></footer>`;
+const FJORDHUSET_CAFE: DemoDataset = {
+  key: "fjordhuset-cafe",
+  tagline: "Café på havnen i Aarhus (brand under Fjordhuset Gruppen)",
+  company: {
+    cvr: "00000004",
+    name: "Fjordhuset Gruppen ApS",
+    address: { street: "Havnen 3", postalCode: "8000", city: "Aarhus C", municipality: "Aarhus", country: "DK" },
+    industry: { code: "561010", text: "Restauranter" },
+    companyForm: { code: "80", text: "Anpartsselskab" },
+    status: "Normal",
+    foundedAt: "2014-05-01",
+    employees: { count: 31, interval: "ANTAL_20_49", year: 2025 },
+    contact: { phone: "70701010", email: "kontakt@fjordhuset.example", website: null },
+    adProtected: false,
+  },
+  pages: {
+    "https://fjordhuset-cafe.example/": page(
+      "Fjordhuset Café — brunch og frokost på havnen",
+      "Fjordhuset Café serverer brunch, frokost og kage med udsigt over Aarhus havn.",
+      `<nav><a href="/menu">Menu</a> <a href="/bord">Bestil bord</a> <a href="/kontakt">Kontakt</a></nav><h1>Brunch med havudsigt</h1><h2>Weekendbrunch</h2><h2>Frokost</h2><p>Bordbestilling: ring på 70 70 10 10 eller send en mail.</p>${cafeFooter}`,
+      `<meta property="og:site_name" content="Fjordhuset Café">`,
+    ),
+    "https://fjordhuset-cafe.example/bord": page(
+      "Bestil bord — Fjordhuset Café",
+      "Bordbestilling.",
+      `<h1>Bestil bord</h1><p>Ring til os eller skriv til bord@fjordhuset-cafe.example. Vi bekræfter inden for et døgn.</p><form><input type="email" name="email"><textarea name="besked"></textarea></form>${cafeFooter}`,
+    ),
+  },
+  search: [
+    { kind: "reviews", title: "Anmeldelse: \"Hyggelig brunch, men svært at bestille bord\" (Anmeldelsesportal Demo)", url: "https://anmeldelser.example/fjordhuset-cafe/1", text: "Lækker brunch. Vi ventede to dage på svar om bordbestilling og endte med at ringe. 4/5." },
+    { kind: "jobs", title: "Caféassistent søges — Fjordhuset Café (Jobportal Demo)", url: "https://jobportal.example/job/fjordhuset-cafe", text: "Fjordhuset Café søger caféassistent til servering og håndtering af bordreservationer og telefon." },
+  ],
+  competitors: [
+    {
+      name: "Havnecaféen Aarhus (fiktiv)",
+      url: "https://havnecafeen.example/",
+      html: page("Havnecaféen", "Book bord online.", `<h1>Havnecaféen</h1><a href="/online-booking">Book bord online</a><p>Tilmeld nyhedsbrev.</p>`),
+    },
+  ],
+  summary:
+    "Fjordhuset Café er et fiktivt cafébrand på Aarhus havn, drevet af Fjordhuset Gruppen ApS. Bordbestilling sker via telefon og e-mail, og en anmeldelse nævner ventetid på svar. Caféen rekrutterer til håndtering af reservationer. Potentialet ligger i online booking og automatiseret gæstekommunikation. (DEMO)",
+};
+
+const eventsFooter = `<footer>Fjordhuset Events er en del af Fjordhuset Gruppen ApS · CVR 00000004 · Søvej 8, 8600 Silkeborg</footer>`;
+const FJORDHUSET_EVENTS: DemoDataset = {
+  key: "fjordhuset-events",
+  tagline: "Selskabslokaler og events i Silkeborg (brand under Fjordhuset Gruppen)",
+  company: FJORDHUSET_CAFE.company,
+  pages: {
+    "https://fjordhuset-events.example/": page(
+      "Fjordhuset Events — selskaber, konferencer og bryllupper",
+      "Selskabslokaler ved Silkeborg-søerne til fester, firmaevents og konferencer.",
+      `<nav><a href="/lokaler">Lokaler</a> <a href="/priser">Priser</a> <a href="/kontakt">Kontakt</a></nav><h1>Selskaber ved søen</h1><h2>Bryllupper</h2><h2>Firmaevents og konferencer</h2><p>Send en forespørgsel, så vender vi tilbage med et tilbud.</p>${eventsFooter}`,
+      `<meta property="og:site_name" content="Fjordhuset Events">${ga}`,
+    ),
+    "https://fjordhuset-events.example/priser": page(
+      "Priser — Fjordhuset Events",
+      "Priser på lokaler og menuer.",
+      `<h1>Priser</h1><p>Priser afhænger af antal gæster og menu. Kontakt os for et individuelt tilbud.</p><form><input type="email" name="email"><textarea name="forespoergsel"></textarea></form>${eventsFooter}`,
+    ),
+  },
+  search: [
+    { kind: "jobs", title: "Eventkoordinator med salgsansvar — Fjordhuset Events (Jobportal Demo)", url: "https://jobportal.example/job/fjordhuset-events", text: "Vi søger en eventkoordinator, der kan håndtere forespørgsler, udarbejde tilbud og følge op på salg." },
+  ],
+  competitors: [],
+  summary:
+    "Fjordhuset Events er et fiktivt brand under Fjordhuset Gruppen ApS med selskabslokaler i Silkeborg. Forespørgsler håndteres via formular og manuelle tilbud, og der rekrutteres en eventkoordinator med salgsansvar. Potentialet ligger i leadhåndtering, tilbudsopfølgning og salgsautomatisering. (DEMO)",
+};
+
+const bryggerietFooter = `<footer>Bryggeriet Nordlys Drift ApS · CVR 00000006 · Ejet af Bryggeriet Nordlys Holding ApS (CVR 00000005) · Bryggervej 2, 9000 Aalborg · <a href="https://www.facebook.com/bryggerietnordlys.example">Facebook</a></footer>`;
+const BRYGGERIET: DemoDataset = {
+  key: "bryggeriet-nordlys",
+  tagline: "Mikrobryggeri med webshop og ølsmagninger (to juridiske enheder)",
+  company: {
+    cvr: "00000006",
+    name: "Bryggeriet Nordlys Drift ApS",
+    address: { street: "Bryggervej 2", postalCode: "9000", city: "Aalborg", municipality: "Aalborg", country: "DK" },
+    industry: { code: "110500", text: "Fremstilling af øl" },
+    companyForm: { code: "80", text: "Anpartsselskab" },
+    status: "Normal",
+    foundedAt: "2019-03-01",
+    employees: { count: 12, interval: "ANTAL_10_19", year: 2025 },
+    contact: { phone: null, email: null, website: null },
+    adProtected: false,
+  },
+  pages: {
+    "https://bryggeriet-nordlys.example/": page(
+      "Bryggeriet Nordlys — håndbrygget øl fra Aalborg",
+      "Mikrobryggeri med webshop, ølsmagninger og firmaarrangementer.",
+      `<nav><a href="/shop">Shop</a> <a href="/smagninger">Ølsmagninger</a> <a href="/kontakt">Kontakt</a></nav><h1>Håndbrygget i Aalborg</h1><h2>Webshop</h2><h2>Ølsmagninger for firmaer</h2><button>Læg i kurv</button>${bryggerietFooter}`,
+      `<meta property="og:site_name" content="Bryggeriet Nordlys"><script src="https://cdn.shopify.com/demo.js"></script>${ga}`,
+    ),
+    "https://bryggeriet-nordlys.example/smagninger": page(
+      "Ølsmagninger — Bryggeriet Nordlys",
+      "Book en ølsmagning.",
+      `<h1>Ølsmagninger</h1><p>Smagninger arrangeres efter aftale. Skriv til os med dato og antal deltagere.</p><form><input type="email" name="email"><textarea name="besked"></textarea></form>${bryggerietFooter}`,
+    ),
+  },
+  search: [
+    { kind: "reviews", title: "Anmeldelse: \"God øl, men min ordre var længe undervejs\" (Anmeldelsesportal Demo)", url: "https://anmeldelser.example/bryggeriet-nordlys/1", text: "Fantastisk øl. Til gengæld tog det lang tid at få svar på, hvor min pakke var. 3/5." },
+    { kind: "jobs", title: "Ordre- og lagermedarbejder — Bryggeriet Nordlys (Jobportal Demo)", url: "https://jobportal.example/job/bryggeriet-nordlys", text: "Administrativ medarbejder til ordrebehandling, lager og overførsel af ordrer til økonomisystemet." },
+  ],
+  competitors: [],
+  summary:
+    "Bryggeriet Nordlys er et fiktivt mikrobryggeri i Aalborg med webshop og ølsmagninger. Hjemmesiden nævner to juridiske enheder (drift og holding), som ikke er bekræftet. Ordrebehandling og kundeservice synes at være manuel, og der rekrutteres til ordreadministration. Potentialet ligger i systemintegration, kundeservice og booking af smagninger. (DEMO)",
+};
+
+export const DEMO_DATASETS: readonly DemoDataset[] = [NORDLYS, HAVBLIK, FJORD, FJORDHUSET_CAFE, FJORDHUSET_EVENTS, BRYGGERIET];
+
+/** Fiktivt CVR-register for Demo Mode (inkl. binavne og P-numre). */
+export interface DemoLegalEntity {
+  company: DemoDataset["company"];
+  secondaryNames: string[];
+  establishments: Array<{ pNumber: string; name: string; street: string; postalCode: string; city: string; industry: string }>;
+  /** Kun i Demo Mode: kendte hjemmesider for brands under CVR'et (hjælp til brugerfladen). */
+  brandWebsites: Record<string, string>;
+}
+
+export const DEMO_REGISTRY: readonly DemoLegalEntity[] = [
+  { company: NORDLYS.company, secondaryNames: [], establishments: [{ pNumber: "0000000101", name: "Nordlys VVS & Energi ApS", street: "Industrivej 12", postalCode: "8260", city: "Viby J", industry: "VVS- og blikkenslagerforretninger" }], brandWebsites: { "Nordlys VVS & Energi ApS": "https://nordlys-vvs.example/" } },
+  { company: HAVBLIK.company, secondaryNames: [], establishments: [], brandWebsites: { "Klinik Havblik ApS": "https://havblik.example/" } },
+  { company: FJORD.company, secondaryNames: ["Studio Fjord"], establishments: [], brandWebsites: { "Studio Fjord": "https://studiofjord.example/", "Studio Fjord Interiør ApS": "https://studiofjord.example/" } },
+  {
+    company: FJORDHUSET_CAFE.company,
+    secondaryNames: ["Fjordhuset Café", "Fjordhuset Events"],
+    establishments: [
+      { pNumber: "0000000401", name: "Fjordhuset Café", street: "Havnen 3", postalCode: "8000", city: "Aarhus C", industry: "Caféer" },
+      { pNumber: "0000000402", name: "Fjordhuset Events", street: "Søvej 8", postalCode: "8600", city: "Silkeborg", industry: "Selskabslokaler" },
+    ],
+    brandWebsites: { "Fjordhuset Café": "https://fjordhuset-cafe.example/", "Fjordhuset Events": "https://fjordhuset-events.example/" },
+  },
+  {
+    company: { ...BRYGGERIET.company, cvr: "00000005", name: "Bryggeriet Nordlys Holding ApS", industry: { code: "642020", text: "Ikke-finansielle holdingselskaber" }, employees: { count: 0, interval: "ANTAL_0_0", year: 2025 } },
+    secondaryNames: [],
+    establishments: [],
+    brandWebsites: {},
+  },
+  { company: BRYGGERIET.company, secondaryNames: ["Bryggeriet Nordlys"], establishments: [{ pNumber: "0000000601", name: "Bryggeriet Nordlys", street: "Bryggervej 2", postalCode: "9000", city: "Aalborg", industry: "Fremstilling af øl" }], brandWebsites: { "Bryggeriet Nordlys": "https://bryggeriet-nordlys.example/" } },
+];
+
+export function findDemoLegalEntity(cvr: string): DemoLegalEntity | undefined {
+  return DEMO_REGISTRY.find((e) => e.company.cvr === cvr);
+}
+
+/** Finder det fiktive datasæt for et domæne (fx "nordlys-vvs.example"). */
+export function findDemoSiteByDomain(domain: string): DemoDataset | undefined {
+  const d = domain.toLowerCase().replace(/^www\./, "");
+  return DEMO_DATASETS.find((ds) => Object.keys(ds.pages).some((u) => new URL(u).hostname === d));
+}
+
+export function demoSiteUrl(ds: DemoDataset): string {
+  return Object.keys(ds.pages)[0];
+}
+
+/** Eksempler, som brugerfladen viser i Demo Mode. */
+export const DEMO_EXAMPLES = [
+  { type: "cvr" as const, value: "00000001", label: "Nordlys VVS (CVR)", hint: "Ét brand med hjemmeside" },
+  { type: "cvr" as const, value: "00000004", label: "Fjordhuset Gruppen (CVR)", hint: "To brands under samme CVR" },
+  { type: "url" as const, value: "https://bryggeriet-nordlys.example", label: "Bryggeriet Nordlys (URL)", hint: "Hjemmesiden nævner to CVR-numre" },
+  { type: "url" as const, value: "https://havblik.example", label: "Klinik Havblik (URL)", hint: "Intet CVR på hjemmesiden" },
+  { type: "url" as const, value: "https://studiofjord.example", label: "Studio Fjord (URL)", hint: "Webshop med CVR i footer" },
+];
 
 export function getDemoDataset(key: string): DemoDataset | undefined {
   return DEMO_DATASETS.find((d) => d.key === key);

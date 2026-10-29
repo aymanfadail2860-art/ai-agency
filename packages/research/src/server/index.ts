@@ -1,9 +1,12 @@
 export * from "./service";
-export { RESEARCH_STEPS, runResearchJob, demoDataSources, liveDataSources, newJob } from "./pipeline";
-export type { ResearchDataSources } from "./pipeline";
-export { DEMO_DATASETS } from "./demo-data";
+export { RESEARCH_STEPS, runBrandResearch, demoDataSources, liveDataSources, newJob, buildRelationSnapshot } from "./pipeline";
+export type { ResearchDataSources, BrandResearchInput } from "./pipeline";
+export { DEMO_DATASETS, DEMO_REGISTRY, DEMO_EXAMPLES } from "./demo-data";
+export { discoverByCvr, discoverByUrl, demoDiscoverySources, liveDiscoverySources, normalizeResearchUrl } from "./discovery";
+export type { DiscoveryResult, DiscoveredLegalEntity, BrandCandidate } from "./discovery";
 export { parseHtmlPage, selectInternalPages } from "./html";
 export { detectSignals } from "./signals";
-export { scoreService, buildRecommendations, buildOpportunities, SCORE_WEIGHTS, SCORE_METHOD } from "./recommend";
-export { segmentForIndustryCode } from "./industry";
+export { extractBrandName, extractCvrMentions, classifyPage, buildWebsiteAnalysis, assessDigitalMaturity } from "./website";
+export { scoreService, buildRecommendations, buildOpportunities, buildMeetingQuestions, SCORE_WEIGHTS, SCORE_METHOD } from "./recommend";
+export { segmentForIndustryCode, segmentFromText } from "./industry";
 export { sanitizeClaudeAnalysis, buildClaudePrompt } from "./claude-analysis";

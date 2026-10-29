@@ -4,7 +4,7 @@ import { createVirkProvider } from "./virk";
 import type { CvrProvider } from "./types";
 
 export * from "./types";
-export { mapVrvirksomhed } from "./mapper";
+export { mapVrvirksomhed, mapVrvirksomhedLookup, mapProduktionsenhed, mapSearchHit } from "./mapper";
 export { createCvrDevProvider, createVirkProvider };
 
 /** Vælger CVR-adapter ud fra CVR_PROVIDER (standard: cvrdev). */

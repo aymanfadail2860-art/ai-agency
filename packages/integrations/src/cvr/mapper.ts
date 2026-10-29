@@ -1,4 +1,4 @@
-import type { CvrRecord } from "./types";
+import type { CvrLookup, CvrRecord, CvrSearchHit, EstablishmentRecord } from "./types";
 
 /**
  * Mapper Erhvervsstyrelsens CVR-datastruktur ("Vrvirksomhed"), som både
@@ -76,5 +76,56 @@ export function mapVrvirksomhed(v: Raw, provider: CvrRecord["registrySource"]["p
     },
     adProtected: Boolean(v.reklamebeskyttet),
     registrySource: { provider, retrievedAt: new Date().toISOString(), reference },
+  };
+}
+
+/** V2: binavne og aktive P-numre ud over registerposten. */
+export function mapVrvirksomhedLookup(v: Raw, provider: CvrRecord["registrySource"]["provider"], reference: string | null): CvrLookup {
+  const record = mapVrvirksomhed(v, provider, reference);
+  const secondaryNames = Array.from(
+    new Set(
+      ((v.binavne as Raw[] | undefined) ?? [])
+        .filter((b) => b?.navn && !b.periode?.gyldigTil)
+        .map((b) => String(b.navn).trim())
+        .filter((n) => n && n.toLowerCase() !== record.name.toLowerCase()),
+    ),
+  ).slice(0, 20);
+  const pUnits = ((v.penheder as Raw[] | undefined) ?? []).filter((p) => p?.pNummer);
+  const activePNumbers = pUnits.filter((p) => !p.periode?.gyldigTil).map((p) => String(p.pNummer));
+  return { record, secondaryNames, activePNumbers, totalPNumbers: pUnits.length };
+}
+
+export function mapProduktionsenhed(p: Raw, provider: CvrRecord["registrySource"]["provider"]): EstablishmentRecord {
+  const meta: Raw = p.produktionsEnhedMetadata ?? {};
+  const addr: Raw | null = meta.nyesteBeliggenhedsadresse ?? currentOf<Raw>(p.beliggenhedsadresse);
+  const branch: Raw | null = meta.nyesteHovedbranche ?? currentOf<Raw>(p.hovedbranche);
+  const name: string = meta.nyesteNavn?.navn ?? currentOf<Raw>(p.navne)?.navn ?? `P-nummer ${p.pNummer}`;
+  const status: string | null = meta.sammensatStatus ?? null;
+  return {
+    pNumber: String(p.pNummer).padStart(10, "0"),
+    name,
+    address: addr
+      ? {
+          street: formatStreet(addr),
+          postalCode: addr.postnummer != null ? String(addr.postnummer) : null,
+          city: addr.postdistrikt ?? addr.bynavn ?? null,
+          municipality: addr.kommune?.kommuneNavn ?? null,
+          country: addr.landekode ?? "DK",
+        }
+      : null,
+    industry: branch ? { code: branch.branchekode ? String(branch.branchekode) : null, text: branch.branchetekst ?? "" } : null,
+    active: status ? !/ophørt|inaktiv/i.test(status) : !currentOf<Raw>(p.livsforloeb)?.periode?.gyldigTil,
+    source: { provider, retrievedAt: new Date().toISOString(), reference: `https://datacvr.virk.dk/enhed/produktionsenhed/${p.pNummer}` },
+  };
+}
+
+export function mapSearchHit(v: Raw): CvrSearchHit {
+  const meta: Raw = v.virksomhedMetadata ?? {};
+  return {
+    cvr: String(v.cvrNummer).padStart(8, "0"),
+    name: meta.nyesteNavn?.navn ?? currentOf<Raw>(v.navne)?.navn ?? "Ukendt",
+    status: meta.sammensatStatus ?? null,
+    city: meta.nyesteBeliggenhedsadresse?.postdistrikt ?? null,
+    industry: meta.nyesteHovedbranche?.branchetekst ?? null,
   };
 }

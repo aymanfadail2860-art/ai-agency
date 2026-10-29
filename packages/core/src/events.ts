@@ -11,6 +11,9 @@ export type ModuleKey = z.infer<typeof ModuleKeySchema>;
 
 export const EVENT_TYPES = [
   "company.registered",
+  "brand.created",
+  "brand.relation.updated",
+  "api.usage.recorded",
   "research.job.started",
   "research.completed",
   "research.failed",

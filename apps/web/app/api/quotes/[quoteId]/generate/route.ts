@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 const Body = z.object({ versionId: z.string().startsWith("qver_") });
 
 export const POST = route<{ params: Promise<{ quoteId: string }> }>(async (req, { params }) => {
-  rateLimit(req, "quote-generate", { limit: 10, windowMs: 60_000 });
+  await rateLimit(req, "quote-generate", { limit: 10, windowMs: 60_000 });
   const { versionId } = Body.parse(await readJson(req));
   return json(await generateContent((await params).quoteId, versionId));
 });

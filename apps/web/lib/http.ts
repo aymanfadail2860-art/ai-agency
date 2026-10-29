@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ZodError } from "zod";
-import { enforceRateLimit, type RateLimitOptions } from "@agency/core/server";
+import { enforceSharedRateLimit, type RateLimitOptions } from "@agency/core/server";
 import { AppError, isAppError } from "@agency/shared";
 
 /**
@@ -24,9 +24,22 @@ export function errorResponse(err: unknown) {
 
 type Handler<C> = (req: NextRequest, ctx: C) => Promise<Response> | Response;
 
+/**
+ * Misbrugsbeskyttelse for den offentlige demo (ingen login i V1): alle
+ * muterende kald begrænses pr. klient og samlet for hele platformen.
+ */
+export const WRITE_LIMITS = {
+  perClient: { limit: 60, windowMs: 60_000 },
+  global: { limit: 3000, windowMs: 60 * 60_000 },
+} as const;
+
 export function route<C = unknown>(handler: Handler<C>): Handler<C> {
   return async (req, ctx) => {
     try {
+      if (req.method !== "GET" && req.method !== "HEAD") {
+        await rateLimit(req, "write", WRITE_LIMITS.perClient);
+        await enforceSharedRateLimit("write:global", WRITE_LIMITS.global);
+      }
       return await handler(req, ctx);
     } catch (err) {
       return errorResponse(err);
@@ -48,8 +61,8 @@ export function clientKey(req: NextRequest): string {
   return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || req.headers.get("x-real-ip") || "local";
 }
 
-export function rateLimit(req: NextRequest, bucket: string, options: RateLimitOptions) {
-  enforceRateLimit(`${bucket}:${clientKey(req)}`, options);
+export async function rateLimit(req: NextRequest, bucket: string, options: RateLimitOptions) {
+  await enforceSharedRateLimit(`${bucket}:${clientKey(req)}`, options);
 }
 
 export const json = (data: unknown, status = 200) => NextResponse.json(data, { status });

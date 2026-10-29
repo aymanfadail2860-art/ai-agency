@@ -1,9 +1,12 @@
+import { createHash } from "node:crypto";
+import { z } from "zod";
 import { AppError } from "@agency/shared";
+import { createCollectionStore, getStorageBackend } from "./json-store";
 
 /**
  * Enkel in-memory rate limiting (fast vindue) pr. nøgle, fx `research:<ip>`.
- * Tilstrækkeligt til én lokal instans; i produktion skal en delt lagring
- * (fx Redis/Upstash) bruges, så grænsen gælder på tværs af instanser.
+ * Gælder kun én instans; `enforceSharedRateLimit` nedenfor tæller også i
+ * Supabase, så grænsen holder på tværs af Vercels serverinstanser.
  */
 interface Bucket {
   count: number;
@@ -37,4 +40,36 @@ export function enforceRateLimit(key: string, options: RateLimitOptions): void {
 
 export function resetRateLimits(): void {
   buckets.clear();
+}
+
+/* -------------------------------------------------------------------------- */
+/* Delt rate limiting (serverless)                                            */
+/* -------------------------------------------------------------------------- */
+
+const RateWindowSchema = z.object({ id: z.string(), count: z.number().int().min(0), resetAt: z.number() });
+const windowStore = createCollectionStore("platform", "rate-limits", RateWindowSchema);
+
+/** IP-adresser gemmes ikke i klartekst — kun en kort, envejs-hashet nøgle (dataminimering). */
+function hashKey(key: string): string {
+  return createHash("sha256").update(key).digest("hex").slice(0, 24);
+}
+
+/**
+ * Som `enforceRateLimit`, men tæller også i den fælles lagring, når platformen
+ * kører på Supabase (Vercel), så grænsen gælder på tværs af serverinstanser.
+ * Lokalt (filbaseret lagring) bruges kun hukommelsen.
+ */
+export async function enforceSharedRateLimit(key: string, options: RateLimitOptions): Promise<void> {
+  enforceRateLimit(key, options);
+  if (getStorageBackend() !== "supabase") return;
+  const now = Date.now();
+  const windowStart = Math.floor(now / options.windowMs) * options.windowMs;
+  const id = `${hashKey(key)}-${windowStart}`;
+  const resetAt = windowStart + options.windowMs;
+  const updated = await windowStore.update(id, (w) => ({ ...w, count: w.count + 1 }));
+  const count = updated ? updated.count : (await windowStore.upsert({ id, count: 1, resetAt })).count;
+  if (count > options.limit) {
+    const seconds = Math.max(1, Math.ceil((resetAt - now) / 1000));
+    throw new AppError("rate_limited", `For mange forespørgsler. Prøv igen om ${seconds} sekunder.`);
+  }
 }

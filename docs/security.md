@@ -8,7 +8,7 @@
 | **Inputvalidering** | Alle API-input og alle lagrede data valideres med Zod. Body-størrelse er maks. 512 KB. CVR valideres med modulus 11. |
 | **Fejlhåndtering** | Ensartede fejlsvar med stabile koder og danske beskeder. Interne fejl logges server-side og returneres som generisk `internal_error` uden stacktrace. |
 | **Timeouts** | CVR 10-12 s, websider 8 s, robots.txt 5 s, søgning 8 s, Claude 180 s med 2 retries. |
-| **Rate limiting** | In-memory fast vindue pr. IP: CVR-opslag 20/min, research 10/min, tekstgenerering 10/min. |
+| **Rate limiting** | Alle muterende kald (og PDF-eksport) begrænses pr. klient (60/min) og samlet for hele platformen (3000/time). Strengere grænser gælder for CVR-opslag (20/min), research (10/min), tekstgenerering (10/min) og PDF (20/min). På Vercel tælles i Supabase, så grænserne holder på tværs af serverinstanser. IP-adresser gemmes kun som en kort SHA-256-hash, og udløbne tællere slettes hvert kvarter (pg_cron). |
 | **SSRF-beskyttelse** | `assertSafeUrl` tillader kun `http(s)` på port 80/443 og ingen loginoplysninger i URL. Interne værtsnavne (`localhost`, `*.local`, `*.internal`, metadata) afvises, DNS opløses, og alle adresser tjekkes mod private, loopback-, link-local-, CGNAT-, multicast-, dokumentations- og IPv4-mapped IPv6-net. Omdirigeringer følges manuelt med kontrol pr. hop (maks. 4). Kun HTML/tekst hentes, maks. 1,5 MB. |
 | **Lovlig indsamling** | `robots.txt` respekteres. Bot-user-agent er identificerbar. Kun offentlige sider hentes, og kun op til 5 sider pr. virksomhed. Websøgning sker via et officielt API med egne vilkår. |
 | **Kildehenvisninger** | Alle fund refererer kilde-id'er. Kilder har type, URL, udbyder og hentetidspunkt. |
@@ -22,7 +22,7 @@
 ## Mangler før produktionsbrug
 
 1. **Autentificering og autorisation**: ingen login eller roller i V1. Alle med netværksadgang kan bruge platformen. Kræver fx Supabase Auth med rollebaseret adgang pr. modul.
-2. **Delt rate limiting**: in-memory-grænser gælder kun én proces. Brug Redis/Upstash.
+2. **Rate limiting**: den delte tæller i Supabase koster ekstra databasekald pr. skrivning. Ved højere trafik bør Vercel Firewall eller Redis/Upstash bruges.
 3. **DNS-rebinding**: IP-kontrollen sker før forbindelsen. En ondsindet DNS-server kan i teorien svare forskelligt. Løsning: pin den opløste IP i en egen `undici`-dispatcher (`connect.lookup`).
 4. **Bag udgående proxy**: når `HTTP(S)_PROXY` er sat, og lokal DNS ikke kan opløse en vært, overlades opslaget til proxyen, så IP-kontrollen ikke kan udføres lokalt. IP-literaler og interne navne afvises stadig. I produktion bør proxyen selv blokere private net, eller lokal DNS bør være tilgængelig (`allowUnresolvedBehindProxy: false`).
 5. **Database og backup**: lokalt har JSON-filer ingen transaktioner eller backup. På Vercel bruges Supabase, hvor adgang kræver headeren `x-agency-secret` (RLS; kun SHA-256-hashen gemmes i databasen). Dokumenterne er ikke normaliserede, og der er ingen transaktioner på tværs af dokumenter.

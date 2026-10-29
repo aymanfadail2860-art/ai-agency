@@ -84,3 +84,15 @@ describe("rate limiting", () => {
     expect(checkRateLimit("k", opts, 1500).allowed).toBe(true);
   });
 });
+
+describe("delt rate limiting", () => {
+  it("bruger hukommelsen lokalt og afviser over grænsen", async () => {
+    const { enforceSharedRateLimit } = await import("@agency/core/server");
+    resetRateLimits();
+    const opts = { limit: 2, windowMs: 60_000 };
+    await enforceSharedRateLimit("test:1.2.3.4", opts);
+    await enforceSharedRateLimit("test:1.2.3.4", opts);
+    await expect(enforceSharedRateLimit("test:1.2.3.4", opts)).rejects.toMatchObject({ code: "rate_limited" });
+    await expect(enforceSharedRateLimit("test:5.6.7.8", opts)).resolves.toBeUndefined();
+  });
+});

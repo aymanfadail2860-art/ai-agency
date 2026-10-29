@@ -7,23 +7,42 @@ import type { CollectionStore } from "./json-store";
  * ----------------
  * Samme `CollectionStore`-interface som JSON-filerne, men gemt i tabellen
  * `public.documents` (se supabase/migrations). Kaldene går til Supabases
- * REST-API (PostgREST) med den offentlige nøgle plus headeren
- * `x-agency-secret`; rækkesikkerhed (RLS) afviser alle kald uden den.
- * Opdateringer bruger optimistisk låsning via kolonnen `rev`.
+ * REST-API (PostgREST) og sker kun server-side. To adgangsformer:
+ *
+ *  1. Servernøgle (anbefalet på Vercel): `SUPABASE_SERVICE_ROLE_KEY` eller
+ *     `SUPABASE_SECRET_KEY`, typisk sat automatisk af Supabases Vercel-integration.
+ *  2. Offentlig nøgle + delt hemmelighed: `SUPABASE_PUBLISHABLE_KEY` og
+ *     `AGENCY_DB_SECRET`; RLS kræver headeren `x-agency-secret`.
+ *
+ * Rækkesikkerhed (RLS) er altid slået til, så den offentlige nøgle alene
+ * ikke giver adgang. Opdateringer bruger optimistisk låsning via `rev`.
  */
 
 export interface SupabaseStoreConfig {
   url: string;
   key: string;
-  secret: string;
+  /** Kun ved adgangsform 2. */
+  secret: string | null;
   fetch?: typeof fetch;
 }
 
 export function getSupabaseStoreConfig(): SupabaseStoreConfig | null {
-  const url = process.env.SUPABASE_URL?.trim();
+  const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL)?.trim().replace(/\/$/, "");
+  if (!url) return null;
+  const serverKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY)?.trim();
+  if (serverKey) return { url, key: serverKey, secret: null };
   const key = process.env.SUPABASE_PUBLISHABLE_KEY?.trim();
   const secret = process.env.AGENCY_DB_SECRET?.trim();
-  return url && key && secret ? { url: url.replace(/\/$/, ""), key, secret } : null;
+  return key && secret ? { url, key, secret } : null;
+}
+
+/** Ældre JWT-nøgler sendes også som Bearer; nye nøgler (sb_…) kun som `apikey`. */
+export function supabaseAuthHeaders(config: Pick<SupabaseStoreConfig, "key" | "secret">): Record<string, string> {
+  return {
+    apikey: config.key,
+    ...(config.key.startsWith("eyJ") ? { authorization: `Bearer ${config.key}` } : {}),
+    ...(config.secret ? { "x-agency-secret": config.secret } : {}),
+  };
 }
 
 interface Row {
@@ -49,9 +68,7 @@ export function createSupabaseStore<T extends { id: string }>(
     const res = await doFetch(`${base}?${query}`, {
       method: init.method ?? "GET",
       headers: {
-        apikey: config.key,
-        authorization: `Bearer ${config.key}`,
-        "x-agency-secret": config.secret,
+        ...supabaseAuthHeaders(config),
         "content-type": "application/json",
         ...(init.prefer ? { prefer: init.prefer } : {}),
       },

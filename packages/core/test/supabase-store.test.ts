@@ -88,3 +88,27 @@ describe("Supabase-lagring", () => {
     await expect(store.list()).rejects.toThrow(/Supabase-lagring fejlede \(401\)/);
   });
 });
+
+describe("Supabase-konfiguration", () => {
+  const keys = ["SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY", "SUPABASE_PUBLISHABLE_KEY", "AGENCY_DB_SECRET"];
+  const clear = () => keys.forEach((k) => delete process.env[k]);
+
+  it("foretrækker servernøglen fra Vercel-integrationen og falder ellers tilbage til filer", async () => {
+    const { getSupabaseStoreConfig, supabaseAuthHeaders } = await import("@agency/core/server");
+    clear();
+    expect(getSupabaseStoreConfig()).toBeNull();
+    process.env.SUPABASE_URL = "https://x.supabase.co/";
+    expect(getSupabaseStoreConfig()).toBeNull();
+    process.env.SUPABASE_SECRET_KEY = "sb_secret_abc";
+    const cfg = getSupabaseStoreConfig()!;
+    expect(cfg).toMatchObject({ url: "https://x.supabase.co", key: "sb_secret_abc", secret: null });
+    expect(supabaseAuthHeaders(cfg)).toEqual({ apikey: "sb_secret_abc" });
+    expect(supabaseAuthHeaders({ key: "eyJabc", secret: null })).toEqual({ apikey: "eyJabc", authorization: "Bearer eyJabc" });
+    clear();
+    process.env.SUPABASE_URL = "https://x.supabase.co";
+    process.env.SUPABASE_PUBLISHABLE_KEY = "sb_publishable_x";
+    process.env.AGENCY_DB_SECRET = "s";
+    expect(supabaseAuthHeaders(getSupabaseStoreConfig()!)).toEqual({ apikey: "sb_publishable_x", "x-agency-secret": "s" });
+    clear();
+  });
+});

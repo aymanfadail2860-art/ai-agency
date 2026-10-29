@@ -14,3 +14,4 @@ playwright-report/
 exports/
 .DS_Store
 next-env.d.ts
+live-results/

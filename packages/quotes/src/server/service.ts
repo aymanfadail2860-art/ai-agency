@@ -2,13 +2,12 @@ import { z } from "zod";
 import {
   DiscountSchema,
   QuoteContentSchema,
+  AnyResearchQuoteHandoffSchema,
   QuoteLineItemSchema,
-  ResearchQuoteHandoffSchema,
   type Quote,
   type QuoteIntakeResult,
   type QuoteLineItem,
   type QuoteVersion,
-  type ResearchQuoteHandoff,
 } from "@agency/core";
 import { publishEvent } from "@agency/core/server";
 import { isAiConfigured } from "@agency/integrations";
@@ -18,6 +17,7 @@ import { DEFAULT_VAT_RATE, calculateQuoteTotals } from "../pricing";
 import { getCatalog } from "./catalog";
 import { generateClaudeContent } from "./claude-content";
 import { renderQuotePdf } from "./pdf";
+import { quoteRecipient } from "../recipient";
 import { quoteStore } from "./store";
 
 /**
@@ -51,9 +51,9 @@ async function nextQuoteNumber(): Promise<string> {
   return `${prefix}${String(max + 1).padStart(4, "0")}`;
 }
 
-/** Modtager kontrakten `research.quote-handoff@1` og opretter et tilbudsudkast. */
+/** Modtager kontrakten `research.quote-handoff` (v1 eller v2) og opretter et tilbudsudkast. */
 export async function intakeFromHandoff(input: unknown): Promise<QuoteIntakeResult> {
-  const handoff: ResearchQuoteHandoff = ResearchQuoteHandoffSchema.parse(input);
+  const handoff = AnyResearchQuoteHandoffSchema.parse(input);
   const existing = await quoteStore.find((q) => q.handoffId === handoff.handoffId);
   if (existing) return { quoteId: existing.id, quoteNumber: existing.number, versionId: existing.currentVersionId };
 
@@ -62,6 +62,7 @@ export async function intakeFromHandoff(input: unknown): Promise<QuoteIntakeResu
     const item = catalog.find((c) => c.id === service.catalogItemId);
     return {
       id: newId("quoteLineItem"),
+      kind: "service",
       catalogItemId: item?.id ?? null,
       sourceRecommendationId: service.recommendationId,
       name: service.serviceName,
@@ -77,12 +78,26 @@ export async function intakeFromHandoff(input: unknown): Promise<QuoteIntakeResu
   });
 
   const now = nowIso();
-  const quoteBase = {
-    company: handoff.company,
-    researchSummary: handoff.researchSummary,
-    researchInsights: handoff.services.map((s) => ({ serviceName: s.serviceName, rationale: s.rationale, keyFindings: s.keyFindings, note: s.note })),
-    mode: handoff.mode,
-  };
+  const quoteBase =
+    handoff.version === 2
+      ? {
+          company: handoff.legalEntity,
+          brand: handoff.brand,
+          researchSummary: handoff.researchSummary,
+          overallRecommendation: handoff.overallRecommendation,
+          researchOpportunities: handoff.opportunities,
+          researchInsights: handoff.services.map((s) => ({ serviceName: s.serviceName, rationale: s.rationale, keyFindings: s.keyFindings, note: s.note, proposedSolution: s.proposedSolution, customerQuestions: s.customerQuestions })),
+          mode: handoff.mode,
+        }
+      : {
+          company: handoff.company,
+          brand: undefined,
+          researchSummary: handoff.researchSummary,
+          overallRecommendation: undefined,
+          researchOpportunities: undefined,
+          researchInsights: handoff.services.map((s) => ({ serviceName: s.serviceName, rationale: s.rationale, keyFindings: s.keyFindings, note: s.note })),
+          mode: handoff.mode,
+        };
   const versionBase = {
     lineItems,
     discount: { kind: "none" as const, value: 0, scope: "all" as const, label: null },
@@ -120,8 +135,8 @@ export async function intakeFromHandoff(input: unknown): Promise<QuoteIntakeResu
     type: "quote.created",
     source: "quotes",
     mode: quote.mode,
-    subject: { companyId: quote.company.companyId, quoteId: quote.id, reportId: handoff.researchReportId },
-    payload: { number: quote.number, services: lineItems.length, handoffId: handoff.handoffId },
+    subject: { companyId: quote.company?.companyId, quoteId: quote.id, reportId: handoff.researchReportId },
+    payload: { number: quote.number, services: lineItems.length, handoffId: handoff.handoffId, contractVersion: handoff.version, brandId: quote.brand?.brandId ?? null },
   });
   return { quoteId: quote.id, quoteNumber: quote.number, versionId: version.id };
 }
@@ -162,7 +177,7 @@ export async function saveDraft(quoteId: string, versionId: string, patch: Versi
     ),
     updatedAt: nowIso(),
   }));
-  await publishEvent({ type: "quote.draft.saved", source: "quotes", mode: quote.mode, subject: { quoteId, companyId: quote.company.companyId }, payload: { versionId } });
+  await publishEvent({ type: "quote.draft.saved", source: "quotes", mode: quote.mode, subject: { quoteId, companyId: quote.company?.companyId }, payload: { versionId } });
   return updated!;
 }
 
@@ -186,7 +201,7 @@ export async function createVersion(quoteId: string): Promise<Quote> {
     currentVersionId: next.id,
     updatedAt: now,
   }));
-  await publishEvent({ type: "quote.version.created", source: "quotes", mode: quote.mode, subject: { quoteId, companyId: quote.company.companyId }, payload: { versionNumber: next.versionNumber } });
+  await publishEvent({ type: "quote.version.created", source: "quotes", mode: quote.mode, subject: { quoteId, companyId: quote.company?.companyId }, payload: { versionNumber: next.versionNumber } });
   return updated!;
 }
 
@@ -227,6 +242,6 @@ export async function exportQuotePdf(quoteId: string, versionId?: string | null)
   if (!version) throw new AppError("not_found", "Versionen blev ikke fundet.");
   const bytes = await renderQuotePdf(quote, version);
   await publishEvent({ type: "quote.pdf.exported", source: "quotes", mode: quote.mode, subject: { quoteId }, payload: { versionNumber: version.versionNumber } });
-  const safeName = quote.company.name.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "");
+  const safeName = quoteRecipient(quote).displayName.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "");
   return { bytes, filename: `Tilbud-${quote.number}-v${version.versionNumber}-${safeName}${quote.mode === "demo" ? "-DEMO" : ""}.pdf` };
 }

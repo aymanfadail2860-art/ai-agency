@@ -98,3 +98,39 @@ describe("tilbudsflow", () => {
     expect(chatbot.monthlyPrice).toBe(999);
   });
 });
+
+describe("tilbud V2 (brand-first, CVR valgfrit)", () => {
+  const v2 = (legal: boolean) => ({
+    contract: "research.quote-handoff" as const,
+    version: 2 as const,
+    handoffId: newId("handoff"),
+    createdAt: nowIso(),
+    mode: "demo" as const,
+    brand: { brandId: "brd_test", name: "Fjordhuset Café", website: "https://fjordhuset-cafe.example/" },
+    legalEntity: legal ? { companyId: "cmp_x", cvr: "00000004", name: "Fjordhuset Gruppen ApS", address: "Havnen 3, 8000 Aarhus C" } : null,
+    researchReportId: "rrep_v2",
+    researchSummary: "Cafébrand (DEMO).",
+    overallRecommendation: "Start med bookingautomatisering.",
+    opportunities: [{ title: "Booking", observed: "Bordbestilling via telefon.", potentialProblem: "Manuelt arbejde.", solution: "Online booking." }],
+    services: [{ recommendationId: "rec_1", catalogItemId: "svc_booking_automation", serviceName: "Bookingautomatisering", description: "Online booking.", rationale: "Telefonbooking observeret.", keyFindings: [], priority: "high" as const, complexity: "low" as const, score: 90, note: null, proposedSolution: "Online booking med påmindelser.", customerQuestions: ["Hvordan bookes borde i dag?"] }],
+    userNotes: "",
+  });
+
+  it("opretter tilbud til et brand uden CVR og nævner det i forbeholdene", async () => {
+    const { quoteId } = await intakeFromHandoff(v2(false));
+    const q = await getQuote(quoteId);
+    expect(q.brand?.name).toBe("Fjordhuset Café");
+    expect(q.company).toBeNull();
+    expect(q.versions[0].content.assumptions).toMatch(/ikke bekræftet/);
+    expect(q.versions[0].content.opportunities).toMatch(/Bordbestilling via telefon/);
+    const pdf = await exportQuotePdf(quoteId);
+    expect(pdf.filename).toMatch(/Fjordhuset-Caf/);
+  });
+
+  it("viser juridisk enhed, når relationen er bekræftet", async () => {
+    const { quoteId } = await intakeFromHandoff(v2(true));
+    const q = await getQuote(quoteId);
+    expect(q.company?.cvr).toBe("00000004");
+    expect(q.versions[0].content.assumptions).toMatch(/Fjordhuset Gruppen ApS/);
+  });
+});

@@ -1,4 +1,4 @@
-# Arkitektur — AI Agency Platform V1
+# Arkitektur — AI Agency Platform (V2)
 
 ## 1. Principper
 
@@ -35,9 +35,21 @@ Hvert modul eksporterer to indgange:
 | `@agency/<modul>` | React-komponenter, typer, rene funktioner (fx `calculateQuoteTotals`) | klient og server |
 | `@agency/<modul>/server` | modulets offentlige service-API | kun server (routes, sider) |
 
-## 3. Fælles kundeidentitet
+## 3. Brand-first identitet (V2)
 
-`companyRegistry` i `core/server` ejer `Company`. En virksomhed er unik pr. `(cvr, mode)`, så demo- og live-data aldrig blandes. Research registrerer virksomheden. Tilbud modtager `CompanyRef` (`companyId`, `cvr`, `name`) via kontrakten. CRM og Produktion skal bruge samme `companyId`.
+Brandet er det primære analyseobjekt. Platformkernen (`core/server/brands.ts`, `companies.ts`) ejer:
+
+| Entitet | Samling | Bemærkning |
+|---|---|---|
+| `Brand` | `platform/brands` | Unik pr. `(mode, primært domæne)`; uden domæne pr. `(navn, juridisk enhed)`. CVR er ikke obligatorisk. |
+| `Website` | `platform/websites` | Et brand kan have flere hjemmesider. |
+| `LegalEntity` (= V1 `Company`) | `platform/companies` | Unik pr. `(cvr, mode)`. |
+| `Establishment` | `platform/establishments` | Arbejdssted/P-nummer under en juridisk enhed. |
+| `BrandLegalEntityRelation` | `platform/brand-legal-relations` | Status `suggested`/`confirmed`/`rejected` + kilder (`evidence`). |
+
+Regler: en relation bliver kun `confirmed`, når brugeren selv har angivet CVR-nummeret som udgangspunkt eller bekræfter relationen. CVR fundet på hjemmesiden eller via navnesøgning oprettes som `suggested`. En afvist relation genoplives ikke af nye forslag. Kun bekræftede relationer bruges som fakta i analysen og på tilbuddet.
+
+V1-data bevares uændret: en idempotent backfill (`backfillLegacyCompanies`) giver hver V1-virksomhed et brand (`createdVia: "legacy_v1"`) med bekræftet relation, så V1-rapporter og -tilbud vises i V2.
 
 ## 4. Datamodel
 
@@ -57,17 +69,25 @@ Defineret i `packages/core/src/models.ts` (Zod → TypeScript). Alle entiteter h
 | CRMContact, SalesOpportunity | crm | kun skema (fremtid) |
 | DashboardMetric | dashboard | kun skema (fremtid) |
 
-## 5. Researchpipeline
+## 5. Research Engine (V2)
 
-`packages/research/src/server/pipeline.ts`:
+To indgange — **URL** og **CVR** — fører til samme motor:
 
 ```text
-registry → website → search → competitors → signals → recommendations → analysis → report
+discovery (discovery.ts)
+  CVR: valider → CVR-opslag → binavne (brandkandidater) → aktive P-numre → vælg brand
+  URL: normaliser → hent forside + kontakt/om/vilkår → brandnavn → CVR-omtaler (modulus 11) → opslag → forslag
+       ingen CVR på siden → navnesøgning i CVR (kun forslag)
+pipeline (pipeline.ts)
+  identity → website (≤ 8 sider, sidetyper) → search (anmeldelser, job, nyheder, profiler, konkurrenter)
+  → competitors → signals → recommendations (5-10, score) → analysis (Claude / regelbaseret) → report
 ```
 
 - **Datakilder er udskiftelige** (`ResearchDataSources`). Demo Mode bruger fiktive sider og søgeresultater, Live Mode bruger `safeFetch` og Brave Search. Analysetrinnene er de samme i begge tilstande.
 - **Signaler** (`signals.ts`): mønstergenkendelse af chat, booking, formularer, nyhedsbrev, analytics, webshop, sociale links, telefon, stillingsopslag og anmeldelser. Tilstedeværelse = fakta. Fravær = vurdering, fordi funktionen kan være indlæst dynamisk.
-- **Anbefalinger og AI Opportunity Score** (`recommend.ts`): deterministisk og vægtet. Observerede behovssignaler 35 %, branchefit 30 %, kildegrundlag 20 %, implementeringsenkelhed 15 %. Hvert kriterium har en begrundelse, som vises i UI. AI ændrer aldrig scoren.
+- **Website Intelligence** (`website.ts`): sidetyper, digitale funktioner som `observed` / `not_observed` / `unknown` (fravær er aldrig bevis), digital modenhed (altid en vurdering).
+- **Anbefalinger og AI Opportunity Score** (`recommend.ts`): deterministisk og vægtet — relevans 30 %, sandsynlig forretningsværdi 25 %, dokumentationens styrke 25 %, implementerbarhed 20 %. Kvalitet frem for antal: 5-10 anbefalinger, kun når grundlaget er der. Hver anbefaling har foreslået løsning, kvalitativ fordel, usikkerheder og spørgsmål til kunden. AI ændrer aldrig scoren.
+- **Kommerciel rapport** (`ResearchReport` med `schemaVersion: 2`): brandprofil, juridiske oplysninger (med status), website-analyse, forretningsmodel og målgrupper, digital modenhed, konkurrenter, muligheder (observation → problem → løsning → værdi → manglende oplysninger), prioriterede services, spørgsmål til kundemødet, kilder og samlet anbefaling.
 - **Analyse**: Claude (structured outputs, valideret med Zod), når `ANTHROPIC_API_KEY` er sat. Ellers en regelbaseret analyse. Begge mærkes i rapporten. Hvis Claude fejler, falder pipelinen tilbage til regelbaseret analyse og noterer det som begrænsning.
 - Jobbet kører asynkront i serverprocessen, og klienten poller `GET /api/research/jobs/:id`.
 

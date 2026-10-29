@@ -2,6 +2,7 @@ import { PDFDocument, StandardFonts, degrees, rgb, type PDFFont, type PDFPage, t
 import type { Quote, QuoteVersion } from "@agency/core";
 import { formatDate, formatDkk, formatPercent } from "@agency/shared";
 import { calculateQuoteTotals } from "../pricing";
+import { quoteRecipient } from "../recipient";
 
 /**
  * PDF-EKSPORT
@@ -124,7 +125,8 @@ export async function renderQuotePdf(quote: Quote, version: QuoteVersion): Promi
   const doc = await PDFDocument.create();
   doc.setTitle(toWinAnsi(`${version.content.title} — ${quote.number} v${version.versionNumber}`));
   doc.setAuthor(toWinAnsi(process.env.AGENCY_NAME ?? "AI Agency"));
-  doc.setSubject(toWinAnsi(`Tilbud til ${quote.company.name}`));
+  const recipient = quoteRecipient(quote);
+  doc.setSubject(toWinAnsi(`Tilbud til ${recipient.displayName}`));
   doc.setCreator("AI Agency Platform V1");
   const regular = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
@@ -146,12 +148,13 @@ export async function renderQuotePdf(quote: Quote, version: QuoteVersion): Promi
     cover.drawText(line, { x: MARGIN, y: ty, size: 26, font: bold, color: rgb(1, 1, 1) });
     ty -= 34;
   }
-  cover.drawText(toWinAnsi(quote.company.name), { x: MARGIN, y: A4.height - 300, size: 13, font: regular, color: rgb(0.85, 0.89, 0.97) });
+  cover.drawText(toWinAnsi(recipient.displayName), { x: MARGIN, y: A4.height - 300, size: 13, font: regular, color: rgb(0.85, 0.89, 0.97) });
 
   const meta: Array<[string, string]> = [
-    ["Kunde", quote.company.name],
-    ["Adresse", quote.company.address ?? "—"],
-    ["CVR", isDemo ? `${quote.company.cvr} (fiktivt)` : quote.company.cvr],
+    ["Kunde", recipient.displayName],
+    ["Juridisk enhed", recipient.legalName ?? "Ikke bekræftet"],
+    ["CVR", recipient.cvr ? (isDemo ? `${recipient.cvr} (fiktivt)` : recipient.cvr) : "—"],
+    ["Adresse", recipient.address ?? recipient.website ?? "—"],
     ["Tilbudsnummer", `${quote.number} · version ${version.versionNumber}`],
     ["Dato", formatDate(issued)],
     ["Gyldigt til", formatDate(validUntil)],
@@ -183,7 +186,7 @@ export async function renderQuotePdf(quote: Quote, version: QuoteVersion): Promi
   /* -------------------------- 2.–11. Indhold -------------------------- */
   w.addPage();
   const c = version.content;
-  w.text(toWinAnsi(quote.company.name), { size: 9, font: bold, color: MUTED });
+  w.text(toWinAnsi(recipient.showLegalName ? `${recipient.displayName} · ${recipient.legalName}` : recipient.displayName), { size: 9, font: bold, color: MUTED });
   w.gap(4);
   const sections: Array<[string, () => void]> = [
     ["Introduktion", () => w.text(c.introduction)],
@@ -206,6 +209,7 @@ export async function renderQuotePdf(quote: Quote, version: QuoteVersion): Promi
     ["Implementeringsplan", () => w.text(c.implementationPlan)],
     ["Prisoversigt", () => drawPriceTable(w, quote, version, totals)],
     ["Forventede fordele", () => w.text(c.benefits)],
+    ["Forudsætninger og forbehold", () => w.text(c.assumptions || "Forudsætninger afklares i fællesskab.")],
     [
       "Vilkår",
       () => {
@@ -259,13 +263,13 @@ function drawPriceTable(w: Writer, quote: Quote, version: QuoteVersion, totals: 
   w.ensure(30);
   w.page.drawRectangle({ x: MARGIN - 6, y: w.y - 20, width: A4.width - 2 * MARGIN + 12, height: 22, color: rgb(0.95, 0.96, 0.98) });
   w.page.drawText("Service", { x: MARGIN, y: w.y - 14, size: 9, font: w.bold, color: MUTED });
-  right("Implementering", colImpl + 80, w.bold, 9, MUTED);
+  right("Engang/implementering", colImpl + 80, w.bold, 9, MUTED);
   right("Pr. måned", colMonth + 80, w.bold, 9, MUTED);
   w.y -= 28;
 
   for (const item of version.lineItems) {
     const line = totals.lines.find((l) => l.id === item.id)!;
-    const label = `${item.name}${item.quantity > 1 ? ` (${item.quantity} stk.)` : ""}${item.addOns.length ? ` + ${item.addOns.map((a) => a.name).join(", ")}` : ""}`;
+    const label = `${item.name}${item.kind === "one_time" ? " (engangsydelse)" : ""}${item.quantity > 1 ? ` (${item.quantity} stk.)` : ""}${item.addOns.length ? ` + ${item.addOns.map((a) => a.name).join(", ")}` : ""}`;
     row(label, formatDkk(line.implementation), formatDkk(line.monthly), { line: true });
   }
   row("Subtotal", formatDkk(totals.implementation.subtotal), formatDkk(totals.monthly.subtotal), { bold: true });

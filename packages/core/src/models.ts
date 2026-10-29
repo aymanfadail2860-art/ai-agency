@@ -441,8 +441,18 @@ export const QuoteSchema = z.object({
   researchSummary: z.string(),
   /** Snapshot af researchindsigter fra overførslen — bruges i tilbudsteksten. */
   researchInsights: z.array(
-    z.object({ serviceName: z.string(), rationale: z.string(), keyFindings: z.array(z.string()), note: z.string().nullable() }),
+    z.object({
+      serviceName: z.string(),
+      rationale: z.string(),
+      keyFindings: z.array(z.string()),
+      note: z.string().nullable(),
+      proposedSolution: z.string().nullable().optional(),
+      customerQuestions: z.array(z.string()).optional(),
+    }),
   ),
+  /** V2: samlet anbefaling og forbedringsmuligheder fra researchrapporten. */
+  overallRecommendation: z.string().optional(),
+  researchOpportunities: z.array(z.object({ title: z.string(), observed: z.string(), potentialProblem: z.string(), solution: z.string() })).optional(),
   userNotes: z.string(),
   /** V1 understøtter kun udkast; accept/afvisning hører til senere versioner. */
   status: z.enum(["draft", "sent", "accepted", "rejected"]),

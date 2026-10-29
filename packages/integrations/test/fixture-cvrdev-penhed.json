@@ -1,0 +1,191 @@
+[
+ {
+  "pNummer": 1006455042,
+  "navne": [
+   {
+    "navn": "NOVO NORDISK A/S",
+    "periode": {
+     "gyldigFra": "1931-11-28",
+     "gyldigTil": "2021-10-13"
+    },
+    "sidstOpdateret": "2021-10-14T14:47:46.000+02:00"
+   },
+   {
+    "navn": "NOVO NORDISK A/S - NN1",
+    "periode": {
+     "gyldigFra": "2021-10-14",
+     "gyldigTil": null
+    },
+    "sidstOpdateret": "2021-10-14T14:47:46.000+02:00"
+   }
+  ],
+  "beliggenhedsadresse": [
+   {
+    "adresseId": null,
+    "bogstavFra": null,
+    "bogstavTil": null,
+    "bynavn": null,
+    "conavn": null,
+    "etage": null,
+    "fritekst": null,
+    "husnummerFra": null,
+    "husnummerTil": null,
+    "kommune": {
+     "kommuneKode": 159,
+     "kommuneNavn": "GLADSAXE",
+     "periode": {
+      "gyldigFra": null,
+      "gyldigTil": "2006-12-31"
+     },
+     "sidstOpdateret": "1999-10-15T00:00:00.000+02:00"
+    },
+    "landekode": "DK",
+    "periode": {
+     "gyldigFra": "1931-11-28",
+     "gyldigTil": "2002-10-04"
+    },
+    "postboks": null,
+    "postdistrikt": "Bagsværd",
+    "postnummer": 2880,
+    "sidedoer": null,
+    "sidstOpdateret": "2013-11-22T23:26:49.000+01:00",
+    "sidstValideret": null,
+    "vejkode": 624,
+    "vejnavn": "Novo Alle"
+   },
+   {
+    "adresseId": "53bd3c9a-eebf-4572-a711-6575e942333c",
+    "bogstavFra": null,
+    "bogstavTil": null,
+    "bynavn": null,
+    "conavn": null,
+    "etage": null,
+    "fritekst": null,
+    "husnummerFra": 1,
+    "husnummerTil": null,
+    "kommune": {
+     "kommuneKode": 159,
+     "kommuneNavn": "GLADSAXE",
+     "periode": {
+      "gyldigFra": "2007-01-01",
+      "gyldigTil": null
+     },
+     "sidstOpdateret": "2006-11-13T00:00:00.000+01:00"
+    },
+    "landekode": "DK",
+    "periode": {
+     "gyldigFra": "2002-10-05",
+     "gyldigTil": null
+    },
+    "postboks": null,
+    "postdistrikt": "Bagsværd",
+    "postnummer": 2880,
+    "sidedoer": null,
+    "sidstOpdateret": "2002-10-05T18:09:05.000+02:00",
+    "sidstValideret": "2017-10-15T09:46:19.990+02:00",
+    "vejkode": 624,
+    "vejnavn": "Novo Alle"
+   }
+  ],
+  "hovedbranche": [
+   {
+    "branchekode": "980000",
+    "branchetekst": "Uoplyst",
+    "periode": {
+     "gyldigFra": "1931-11-28",
+     "gyldigTil": "1999-10-17"
+    },
+    "sidstOpdateret": "2013-11-22T23:05:42.000+01:00"
+   },
+   {
+    "branchekode": "244200",
+    "branchetekst": "Medicinalvarefabrikker",
+    "periode": {
+     "gyldigFra": "1999-10-18",
+     "gyldigTil": "2007-12-31"
+    },
+    "sidstOpdateret": "2000-05-29T11:11:54.000+02:00"
+   },
+   {
+    "branchekode": "212000",
+    "branchetekst": "Fremstilling af farmaceutiske præparater",
+    "periode": {
+     "gyldigFra": "2008-01-01",
+     "gyldigTil": "2024-12-31"
+    },
+    "sidstOpdateret": "2024-12-28T09:51:05.000+01:00"
+   },
+   {
+    "branchekode": "212000",
+    "branchetekst": "Fremstilling af farmaceutiske præparater",
+    "periode": {
+     "gyldigFra": "2025-01-01",
+     "gyldigTil": null
+    },
+    "sidstOpdateret": "2024-12-28T09:57:12.000+01:00"
+   }
+  ],
+  "livsforloeb": [
+   {
+    "periode": {
+     "gyldigFra": "1931-11-28",
+     "gyldigTil": null
+    },
+    "sidstOpdateret": "1999-10-17T00:00:00.000+02:00"
+   }
+  ],
+  "produktionsEnhedMetadata": {
+   "nyesteNavn": {
+    "navn": "NOVO NORDISK A/S - NN1",
+    "periode": {
+     "gyldigFra": "2021-10-14",
+     "gyldigTil": null
+    },
+    "sidstOpdateret": "2021-10-14T14:47:46.000+02:00"
+   },
+   "nyesteBeliggenhedsadresse": {
+    "adresseId": "53bd3c9a-eebf-4572-a711-6575e942333c",
+    "bogstavFra": null,
+    "bogstavTil": null,
+    "bynavn": null,
+    "conavn": null,
+    "etage": null,
+    "fritekst": null,
+    "husnummerFra": 1,
+    "husnummerTil": null,
+    "kommune": {
+     "kommuneKode": 159,
+     "kommuneNavn": "GLADSAXE",
+     "periode": {
+      "gyldigFra": "2007-01-01",
+      "gyldigTil": null
+     },
+     "sidstOpdateret": "2006-11-13T00:00:00.000+01:00"
+    },
+    "landekode": "DK",
+    "periode": {
+     "gyldigFra": "2002-10-05",
+     "gyldigTil": null
+    },
+    "postboks": null,
+    "postdistrikt": "Bagsværd",
+    "postnummer": 2880,
+    "sidedoer": null,
+    "sidstOpdateret": "2002-10-05T18:09:05.000+02:00",
+    "sidstValideret": "2017-10-15T09:46:19.990+02:00",
+    "vejkode": 624,
+    "vejnavn": "Novo Alle"
+   },
+   "nyesteHovedbranche": {
+    "branchekode": "212000",
+    "branchetekst": "Fremstilling af farmaceutiske præparater",
+    "periode": {
+     "gyldigFra": "2025-01-01",
+     "gyldigTil": null
+    },
+    "sidstOpdateret": "2024-12-28T09:57:12.000+01:00"
+   },
+   "sammensatStatus": "Aktiv"
+  }
+ }
+]

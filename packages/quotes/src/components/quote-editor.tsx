@@ -18,6 +18,7 @@ const CONTENT_FIELDS: Array<[keyof QuoteContent, string, number]> = [
   ["solutions", "Anbefalede løsninger", 5],
   ["implementationPlan", "Implementeringsplan", 5],
   ["benefits", "Forventede fordele", 5],
+  ["assumptions", "Forudsætninger og forbehold", 5],
   ["terms", "Vilkår", 6],
   ["nextSteps", "Næste skridt", 3],
 ];
@@ -68,6 +69,7 @@ export function QuoteEditor({ initialQuote, catalog, agencyName, aiAvailable }: 
         ...draft.lineItems,
         {
           id: newLineId(),
+          kind: "service",
           catalogItemId: item.id,
           sourceRecommendationId: null,
           name: item.name,
@@ -83,6 +85,28 @@ export function QuoteEditor({ initialQuote, catalog, agencyName, aiAvailable }: 
       ],
     });
     setAddId("");
+  }
+  function addOneTime() {
+    update({
+      lineItems: [
+        ...draft.lineItems,
+        {
+          id: newLineId(),
+          kind: "one_time",
+          catalogItemId: null,
+          sourceRecommendationId: null,
+          name: "Engangsydelse",
+          description: "Beskriv ydelsen, fx workshop, dataoprydning eller undervisning.",
+          deliverables: [],
+          implementationPrice: 0,
+          monthlyPrice: 0,
+          quantity: 1,
+          addOns: [],
+          estimatedWeeks: { min: 1, max: 1 },
+          rationale: null,
+        },
+      ],
+    });
   }
 
   async function save(silent = false): Promise<Quote | null> {
@@ -206,7 +230,7 @@ export function QuoteEditor({ initialQuote, catalog, agencyName, aiAvailable }: 
                   <div key={line.id} className="space-y-3 rounded-lg border border-border p-4" data-testid="line-item">
                     <div className="flex items-start gap-2">
                       <div className="flex-1 space-y-1.5">
-                        <Label htmlFor={`name-${line.id}`}>Service {index + 1}</Label>
+                        <Label htmlFor={`name-${line.id}`}>{line.kind === "one_time" ? `Engangsydelse ${index + 1}` : `Service ${index + 1}`}</Label>
                         <Input id={`name-${line.id}`} value={line.name} onChange={(e) => updateLine(line.id, { name: e.target.value })} />
                       </div>
                       <Button variant="ghost" size="icon" className="mt-6" aria-label={`Fjern ${line.name}`} onClick={() => update({ lineItems: draft.lineItems.filter((l) => l.id !== line.id) })}>
@@ -219,12 +243,12 @@ export function QuoteEditor({ initialQuote, catalog, agencyName, aiAvailable }: 
                     </div>
                     <div className="grid grid-cols-3 gap-3">
                       <div className="space-y-1.5">
-                        <Label htmlFor={`impl-${line.id}`}>Implementering (kr.)</Label>
+                        <Label htmlFor={`impl-${line.id}`}>{line.kind === "one_time" ? "Pris (kr.)" : "Implementering (kr.)"}</Label>
                         <Input id={`impl-${line.id}`} type="number" min={0} step="100" value={line.implementationPrice} onChange={(e) => updateLine(line.id, { implementationPrice: Math.max(0, Number(e.target.value) || 0) })} data-testid="impl-price" />
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor={`month-${line.id}`}>Pr. måned (kr.)</Label>
-                        <Input id={`month-${line.id}`} type="number" min={0} step="10" value={line.monthlyPrice} onChange={(e) => updateLine(line.id, { monthlyPrice: Math.max(0, Number(e.target.value) || 0) })} data-testid="monthly-price" />
+                        <Input id={`month-${line.id}`} type="number" min={0} step="10" disabled={line.kind === "one_time"} value={line.kind === "one_time" ? 0 : line.monthlyPrice} onChange={(e) => updateLine(line.id, { monthlyPrice: Math.max(0, Number(e.target.value) || 0) })} data-testid="monthly-price" />
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor={`qty-${line.id}`}>Antal</Label>
@@ -281,6 +305,9 @@ export function QuoteEditor({ initialQuote, catalog, agencyName, aiAvailable }: 
                   <Plus /> Tilføj
                 </Button>
               </div>
+              <Button variant="ghost" size="sm" onClick={addOneTime} data-testid="add-one-time">
+                <Plus /> Tilføj engangsydelse
+              </Button>
             </CardContent>
           </Card>
 

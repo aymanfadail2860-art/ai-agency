@@ -68,8 +68,10 @@ export function extractCvrMentions(pages: PageWithSource[], allowDemoNumbers = f
       if (digits.length !== 8) continue;
       const valid = validateCvr(digits).valid || (allowDemoNumbers && /^0000000\d$/.test(digits));
       if (!valid || found.has(digits)) continue;
-      const start = Math.max(0, (m.index ?? 0) - 60);
-      found.set(digits, { cvr: digits, url: page.url, snippet: truncate(page.text.slice(start, (m.index ?? 0) + m[0].length + 40).trim(), 200), sourceId });
+      let start = Math.max(0, (m.index ?? 0) - 60);
+      // Start uddraget ved en ordgrænse.
+      if (start > 0) start = page.text.indexOf(" ", start) + 1 || start;
+      found.set(digits, { cvr: digits, url: page.url, snippet: truncate(page.text.slice(start, (m.index ?? 0) + m[0].length + 40).replace(/^[·\s]+/, "").trim(), 200), sourceId });
     }
   }
   return Array.from(found.values()).slice(0, 5);

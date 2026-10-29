@@ -1,10 +1,10 @@
-# Næste udviklingsfase (V2)
+# Næste udviklingsfase (V3)
 
 Forslag i prioriteret rækkefølge. Kontrakterne er allerede dokumenteret i [api-contracts.md](api-contracts.md).
 
 ## 1. Platformfundament
 
-- **Supabase/PostgreSQL**: implementér `CollectionStore` oven på Postgres (én tabel eller ét skema pr. modul, JSONB i overgangsfasen). Flyt `companies` og `events` til et `platform`-skema. Row Level Security pr. modul.
+- **Supabase/PostgreSQL**: V2 gemmer allerede alle moduler i Supabase (`public.documents`, JSONB). Næste skridt er normaliserede tabeller pr. modul og Row Level Security pr. modul/rolle.
 - **Auth og roller**: Supabase Auth med rollerne `sælger`, `producer`, `leder` og `admin`. Moduladgang styres via modulregistret.
 - **Jobkø** til research og AI-generering, så job overlever genstart og kan køre parallelt.
 - **Delt rate limiting** og fejlsporing.
@@ -34,6 +34,8 @@ Forslag i prioriteret rækkefølge. Kontrakterne er allerede dokumenteret i [api
 
 ## 6. Research
 
+- Rendering af JavaScript-tunge hjemmesider (headless browser) — V2 analyserer kun server-leveret HTML.
+- Normaliserede tabeller for brands/relationer i Postgres (V2 gemmer dokumenter som JSONB).
 - Flere kilder via officielle API'er: nyheds-API, jobportaler med API-adgang, Trustpilot Business API og regnskabsdata (Erhvervsstyrelsens regnskaber).
 - Brug Claudes web search-værktøj som alternativ søgeudbyder, med samme kildevalidering.
 - Gentagen research og sammenligning over tid. Feedback-loop på anbefalinger (valgt/fravalgt) til kalibrering af branchefit.

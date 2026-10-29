@@ -61,6 +61,8 @@ export interface ResearchDataSources {
   isDemo: boolean;
   provider: string;
   fetchPage: (url: string) => Promise<FetchedDoc>;
+  /** Valgfri: om datakilden kan levere adressen (Demo Mode), så ikke-eksisterende sider ikke forsøges. */
+  canFetch?: (url: string) => boolean;
   /** null = websøgning ikke tilgængelig. */
   search: ((query: string, kind: "jobs" | "reviews" | "news" | "social" | "competitors") => Promise<SearchResult[]>) | null;
   useAi: boolean;
@@ -84,15 +86,21 @@ export function liveDataSources(): ResearchDataSources {
 export function demoDataSources(websites: string[]): ResearchDataSources {
   const datasets = websites.map((w) => findDemoSiteByDomain(new URL(w).hostname)).filter((d): d is NonNullable<typeof d> => Boolean(d));
   const primary = datasets[0];
+  const lookup = (url: string): string | undefined => {
+    const normalized = url.replace(/#.*$/, "");
+    for (const ds of datasets) {
+      const html = ds.pages[normalized] ?? ds.pages[normalized.replace(/\/$/, "")] ?? ds.pages[`${normalized.replace(/\/$/, "")}/`] ?? ds.competitors.find((c) => c.url === normalized)?.html;
+      if (html) return html;
+    }
+    return undefined;
+  };
   return {
     isDemo: true,
     provider: "demo",
+    canFetch: (url) => lookup(url) !== undefined,
     fetchPage: async (url) => {
-      const normalized = url.replace(/#.*$/, "");
-      for (const ds of datasets) {
-        const html = ds.pages[normalized] ?? ds.pages[normalized.replace(/\/$/, "")] ?? ds.pages[`${normalized.replace(/\/$/, "")}/`] ?? ds.competitors.find((c) => c.url === normalized)?.html;
-        if (html) return { finalUrl: normalized, body: html, fetchedAt: nowIso() };
-      }
+      const html = lookup(url);
+      if (html) return { finalUrl: url.replace(/#.*$/, ""), body: html, fetchedAt: nowIso() };
       throw new AppError("integration_error", `Demo-siden ${url} findes ikke.`);
     },
     search: primary
@@ -217,7 +225,7 @@ export async function runBrandResearch(job: ResearchJob, input: BrandResearchInp
       const homeSource = pageSource(homePage, "website", home.fetchedAt, ds.isDemo, ds.provider);
       sources.push(homeSource);
       pages.push({ sourceId: homeSource.id, page: homePage, pageType: "home" });
-      for (const url of selectInternalPages(homePage, maxPages() - 1)) {
+      for (const url of selectInternalPages(homePage, maxPages() - 1, ds.canFetch)) {
         try {
           const doc = await ds.fetchPage(url);
           const parsed = parseHtmlPage(doc.body, doc.finalUrl);

@@ -12,7 +12,25 @@ Koder: `validation_error` (400), `blocked_url` (400), `forbidden` (403, anden op
 
 ---
 
-## 1. `research.quote-handoff@1`: AKTIV
+## 1a. `research.quote-handoff@2`: AKTIV (V2)
+
+Brand-first: tilbud kan oprettes uden CVR. `legalEntity` er kun sat, når præcis én relation er bekræftet.
+
+```ts
+{
+  contract: "research.quote-handoff", version: 2, handoffId: "hnd_…", createdAt, mode,
+  brand: { brandId: "brd_…", name, website: "… | null" },
+  legalEntity: { companyId, cvr, name, address } | null,
+  researchReportId: "rrep_…", researchSummary, overallRecommendation,
+  opportunities: [{ title, observed, potentialProblem, solution }],   // max 12
+  services: [{ …v1-felter, proposedSolution: "… | null", customerQuestions: ["…"] }],  // min. 1
+  userNotes
+}
+```
+
+`POST /api/quotes/intake` accepterer både v1 og v2 (diskrimineret på `version`).
+
+## 1b. `research.quote-handoff@1`: AKTIV (understøttes fortsat)
 
 **Research → Tilbud.** Overfører kundeidentitet, researchresumé, valgte services, begrundelser og brugerbemærkninger. Ingen genindtastning.
 
@@ -120,10 +138,15 @@ Kan genereres direkte fra platformens hændelseslog (`research.completed`, `quot
 |---|---|---|
 | GET/PUT | `/api/settings` | Platformtilstand `{ mode }` |
 | GET | `/api/integrations/status` | Status for CVR, AI, søgning og webhentning (uden nøgler) |
-| GET | `/api/research/companies?mode=` | Virksomheder med seneste job og rapport |
+| POST | `/api/research/discover` | `{ type: "cvr"\|"url", value }` → brand-, CVR-, P-nummer- og hjemmesidefund (rate limit 20/min) |
+| GET/POST | `/api/research/brands` | Liste / opret brand `{ type, name, websiteUrl?, legalEntityId?, suggestedLegalEntityIds? }` (genbruger samme domæne) |
+| GET | `/api/research/brands/:id` | Brand, hjemmesider, relationer, P-numre, rapporter |
+| POST | `/api/research/brands/:id/relations` | `{ cvr }` → foreslået relation (verificeres via CVR) |
+| PATCH | `/api/research/brands/:id/relations/:relationId` | `{ decision: "confirmed"\|"rejected" }` |
+| GET | `/api/research/companies?mode=` | V1-kompatibel: lister nu brands |
 | POST | `/api/research/companies/lookup` | `{ cvr }` → Company (Live, rate limit 20/min) |
 | POST | `/api/research/companies/demo` | `{ key }` → fiktiv Company |
-| POST | `/api/research/jobs` | `{ companyId, websiteUrl? }` → 202 ResearchJob (rate limit 10/min) |
+| POST | `/api/research/jobs` | `{ brandId, websiteUrl? }` (eller V1 `{ companyId }`) → 202 ResearchJob (rate limit 10/min, dagligt loft) |
 | GET | `/api/research/jobs/:id` | Jobstatus med trin |
 | GET/PATCH | `/api/research/reports/:id` | Rapport; PATCH `{ notes?, status?, recommendations?: [{ id, selected?, editedDescription?, note? }] }` |
 | POST | `/api/research/reports/:id/handoff` | Opretter tilbud via kontrakt 1 |

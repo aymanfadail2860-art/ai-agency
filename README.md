@@ -1,4 +1,4 @@
-# AI Agency Platform — V1
+# AI Agency Platform — V2
 
 Et modulært operativsystem til et AI-bureau: fra research og salg til produktion, levering, kundestyring og rapportering.
 
@@ -6,8 +6,8 @@ Et modulært operativsystem til et AI-bureau: fra research og salg til produktio
 
 | # | Modul | Route | Status i V1 |
 |---|---|---|---|
-| 1 | Research | `/research` | **Aktiv**: CVR-opslag, researchpipeline, AI-analyse, serviceanbefalinger |
-| 2 | Tilbud | `/quotes` | **Aktiv**: servicekatalog, tilbudsbygger, prisberegning, tilbudstekst, versioner, PDF |
+| 1 | Research | `/research` | **Aktiv (V2)**: brand-first research via URL eller CVR, Website Intelligence, websøgning, konkurrenter, Claude-analyse, 5-10 serviceanbefalinger, kommerciel rapport |
+| 2 | Tilbud | `/quotes` | **Aktiv (V2)**: tilbud til brand med eller uden CVR, engangsydelser, forudsætninger og forbehold, AI-tekst, versioner, PDF |
 | 3 | Produktion & Levering | `/production` | Afventer: visuelt preview + dokumenteret kontrakt |
 | 4 | CRM | `/crm` | Afventer: visuelt preview + dokumenteret kontrakt |
 | 5 | Dashboard | `/dashboard` | Afventer: visuelt preview (demo-markeret) + dokumenteret kontrakt |
@@ -32,13 +32,14 @@ Platformen starter i **Demo Mode** og kræver ingen API-nøgler. Data gemmes lok
 
 ### Demo-flowet (ca. 1 minut)
 
-1. Åbn **Research**, og vælg en af de tre fiktive virksomheder.
-2. Klik **Start AI Research**. Pipelinen kører alle trin på fiktive kilder.
-3. Gennemse rapporten: resumé, profil, forbedringsmuligheder, konkurrenter og kilder (klik på `[n]`).
-4. Vælg services med checkboxes, redigér beskrivelser og noter, og klik **Gem rapport**.
-5. Klik **Opret tilbud**. Kunde, resumé, services og begrundelser overføres automatisk.
-6. Redigér priser, tilvalg, rabat og vilkår, og følg live-preview til højre.
-7. **Generer tilbud** → **Eksportér PDF** → **Ny version**.
+1. Åbn **Research**, og vælg indgang: **Hjemmeside / URL** eller **CVR-nummer**. Eller klik på et af demoeksemplerne.
+2. **Identificér brand**: systemet finder brand, juridiske enheder, binavne og P-numre. Relationer fra hjemmesiden er *foreslået* og skal bekræftes.
+3. **Opret brand og fortsæt** → bekræft eller afvis juridiske relationer på brandsiden → **Start AI Research**.
+4. Gennemse den kommercielle rapport: overblik (samlet anbefaling, juridiske oplysninger, digital modenhed, spørgsmål til kundemødet), website-analyse, forretning, muligheder, konkurrenter og kilder.
+5. Vælg services, redigér beskrivelser og noter, og klik **Gem rapport** → **Opret tilbud**.
+6. Redigér priser, tilvalg, engangsydelser, rabat og vilkår med live-preview → **Generer tilbud** → **Eksportér PDF** → **Ny version**.
+
+Demoeksemplerne dækker scenarierne: ét brand med CVR (Nordlys VVS), to brands under samme CVR (Fjordhuset Gruppen), hjemmeside med to CVR-numre (Bryggeriet Nordlys), hjemmeside uden CVR (Klinik Havblik) og webshop (Studio Fjord).
 
 ### Live Mode
 
@@ -46,10 +47,12 @@ Skift til Live Mode under **Indstillinger**, og konfigurér integrationer i `app
 
 | Integration | Variabel | Uden nøgle |
 |---|---|---|
-| CVR-opslag (cvr.dev eller virk.dk) | `CVR_DEV_API_KEY` / `CVR_VIRK_USERNAME`+`CVR_VIRK_PASSWORD` | Opslag afvises med en forklaring, uden demo-fallback |
-| AI-analyse og tilbudstekst (Claude) | `ANTHROPIC_API_KEY` (`ANTHROPIC_MODEL`, standard `claude-opus-5-5`) | Regelbaseret analyse og skabelontekst, tydeligt markeret |
+| CVR-opslag, binavne, P-numre og navnesøgning (cvr.dev) | `CVR_DEV_API_KEY` (eller virk.dk: `CVR_VIRK_USERNAME`+`CVR_VIRK_PASSWORD`, uden P-numre/navnesøgning) | CVR-indgangen afvises med en forklaring; URL-research virker fuldt uden CVR |
+| AI-analyse og tilbudstekst (Claude) | `ANTHROPIC_API_KEY` (`ANTHROPIC_MODEL`, standard `claude-opus-5-5`; verificeres via Models API) | Regelbaseret analyse og skabelontekst, tydeligt markeret |
 | Websøgning: nyheder, job, anmeldelser, konkurrenter | `BRAVE_SEARCH_API_KEY` | Trinnet springes over og noteres som begrænsning |
 | Hentning af hjemmeside | `RESEARCH_WEBSITE_FETCH` (standard `true`) | — |
+
+Omkostningsgrænser (`AI_DAILY_BUDGET_USD`, `SEARCH_DAILY_LIMIT`, `RESEARCH_DAILY_LIMIT`, `CVR_DAILY_LIMIT`, `RESEARCH_MAX_PAGES`) og dagens forbrug vises under Indstillinger.
 
 I Live Mode bruges **aldrig** fiktive data som fallback. Manglende integrationer vises i rapportens "Datagrundlag og begrænsninger" og under Indstillinger.
 
@@ -70,8 +73,9 @@ Indstillinger viser, om platformen bruger "Supabase (database)" eller "lokale JS
 ## Test
 
 ```bash
-pnpm test        # Vitest: 67 enhedstests (priser, kontrakter, SSRF, robots, CVR-mapping, scoring, pipeline, PDF …)
-pnpm test:e2e    # Playwright: bygger appen og kører hele acceptflowet (punkt 1-16) + API-kontrakttests
+pnpm test        # Vitest: 87 enhedstests (brand-first, discovery, scoring, priser, kontrakter, SSRF, CVR-mapping, budgetter, PDF …)
+pnpm test:e2e    # Playwright: bygger appen og kører scenarierne A-F (CVR, URL, flere brands, flere juridiske enheder, manglende integration, persistens)
+LIVE_BASE_URL=https://… pnpm exec playwright test -c playwright.live.config.ts   # live-test mod en deployet instans
 pnpm typecheck   # TypeScript i alle pakker
 ```
 
@@ -124,5 +128,7 @@ Eksporten indeholder kildekode og dokumentation, men ikke `node_modules`, `.next
 - Brugerlogin og adgangsstyring.
 - Accept af tilbud og afsendelse til kunder. Status `accepted` findes i datamodellen, men bruges ikke.
 - Lokalt bruges JSON-filer; på Vercel bruges Supabase bag samme `CollectionStore`-interface (ét JSONB-dokument pr. entitet, ikke normaliserede tabeller).
+- Websøgning (Brave) og Claude kræver API-nøgler; uden dem markeres analysen som regelbaseret, og eksterne kilder (anmeldelser, job, nyheder, konkurrenter) undersøges ikke.
+- Hjemmesider, der kræver JavaScript for at vise indhold, analyseres kun ud fra den HTML, serveren leverer.
 - Konkurrentanalyse og stillingsopslag/anmeldelser kræver websøgning (`BRAVE_SEARCH_API_KEY`). Sociale profiler registreres kun via links på virksomhedens hjemmeside.
 - Alle priser i servicekataloget er fiktive demopriser.

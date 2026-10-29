@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { assertSafeUrl, clearRobotsCache, createCvrDevProvider, isPathAllowed, isPrivateIp, parseRobots, safeFetch, wrapUntrusted } from "@agency/integrations";
+import { assertSafeUrl, clearRobotsCache, createCvrDevProvider, estimateCostUsd, isPathAllowed, isPrivateIp, mapProduktionsenhed, mapVrvirksomhedLookup, parseRobots, safeFetch, wrapUntrusted } from "@agency/integrations";
 
 const publicDns = async () => ["93.184.216.34"];
 
@@ -84,7 +84,7 @@ describe("CVR-adapter (cvr.dev)", () => {
   it("mapper rigtig CVR-struktur og frasorterer hemmelige kontaktoplysninger", async () => {
     process.env.CVR_DEV_API_KEY = "test";
     const provider = createCvrDevProvider((async () => new Response(fixture, { status: 200 })) as never);
-    const record = await provider.lookup("10150817");
+    const { record } = await provider.lookup("10150817");
     expect(record.name).toBe("Erhvervsstyrelsen");
     expect(record.address?.postalCode).toBe("2100");
     expect(record.industry?.code).toBe("841300");
@@ -102,6 +102,36 @@ describe("CVR-adapter (cvr.dev)", () => {
     process.env.CVR_DEV_API_KEY = "test";
     await expect(provider.lookup("10150817")).rejects.toMatchObject({ code: "upstream_not_found" });
     delete process.env.CVR_DEV_API_KEY;
+  });
+});
+
+describe("CVR V2: binavne, P-numre og arbejdssteder", () => {
+  it("udtrækker aktive binavne og P-numre", () => {
+    const raw = JSON.parse(readFileSync(path.join(__dirname, "fixture-cvrdev-10150817.json"), "utf8"))[0];
+    raw.binavne = [
+      { navn: "Aktivt Brand", periode: { gyldigFra: "2020-01-01", gyldigTil: null } },
+      { navn: "Gammelt Brand", periode: { gyldigFra: "2001-01-01", gyldigTil: "2010-01-01" } },
+    ];
+    raw.penheder = [
+      { pNummer: 1006455042, periode: { gyldigFra: "1931-11-28", gyldigTil: null } },
+      { pNummer: 1007675530, periode: { gyldigFra: "1999-10-18", gyldigTil: "1999-10-18" } },
+    ];
+    const lookup = mapVrvirksomhedLookup(raw, "cvr.dev", null);
+    expect(lookup.secondaryNames).toEqual(["Aktivt Brand"]);
+    expect(lookup.activePNumbers).toEqual(["1006455042"]);
+    expect(lookup.totalPNumbers).toBe(2);
+  });
+  it("mapper et rigtigt produktionsenhed-svar", () => {
+    const raw = JSON.parse(readFileSync(path.join(__dirname, "fixture-cvrdev-penhed.json"), "utf8"))[0];
+    const est = mapProduktionsenhed(raw, "cvr.dev");
+    expect(est.pNumber).toBe("1006455042");
+    expect(est.name).toBe("NOVO NORDISK A/S - NN1");
+    expect(est.address?.postalCode).toBe("2880");
+    expect(est.source.reference).toContain("1006455042");
+  });
+  it("estimerer Claude-omkostninger konservativt", () => {
+    expect(estimateCostUsd("claude-opus-5-5", 1_000_000, 100_000)).toBeCloseTo(6);
+    expect(estimateCostUsd("ukendt-model", 1_000_000, 0)).toBeCloseTo(10);
   });
 });
 

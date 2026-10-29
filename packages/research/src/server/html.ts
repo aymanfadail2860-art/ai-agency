@@ -66,7 +66,9 @@ export function parseHtmlPage(html: string, pageUrl: string): ParsedPage {
   };
   const httpLinks = links.filter((l) => /^https?:/.test(l.href));
 
-  const bodyText = collapseWhitespace(root.querySelector("body")?.text ?? root.text);
+  // structuredText indsætter linjeskift mellem blokelementer, så ord fra forskellige elementer ikke klistres sammen.
+  const bodyNode = root.querySelector("body") ?? root;
+  const bodyText = collapseWhitespace(bodyNode.structuredText.replace(/\n+/g, " · "));
   const telLinks = links.filter((l) => l.href.startsWith("tel:")).map((l) => l.href.slice(4));
   const phoneNumbers = Array.from(new Set([...telLinks, ...(bodyText.match(PHONE_RE) ?? [])].map((p) => p.replace(/[\s.-]/g, "")))).slice(0, 5);
 
@@ -105,20 +107,29 @@ const PRIORITY_PATHS = [
   /job|karriere|career|ledige/i,
 ];
 
-/** Udvælger op til `max` relevante undersider på samme domæne. */
-export function selectInternalPages(page: ParsedPage, max = 4): string[] {
+const SKIP_LINK = /\.(pdf|jpe?g|png|gif|svg|webp|zip|docx?|xlsx?|mp4|mp3)$|\/(wp-admin|wp-login|cart|kurv|checkout|kasse|login|log-?ind|account|konto)\b/i;
+
+/**
+ * Udvælger op til `max` relevante undersider på samme domæne: først de
+ * prioriterede sidetyper, derefter øvrige navigationslinks. `canFetch`
+ * filtrerer adresser, datakilden ikke kan levere (bruges i Demo Mode).
+ */
+export function selectInternalPages(page: ParsedPage, max = 4, canFetch?: (url: string) => boolean): string[] {
   const seen = new Set<string>([normalize(page.url)]);
   const picked: string[] = [];
+  const usable = page.internalLinks.filter((l) => !SKIP_LINK.test(new URL(l.href).pathname) && (!canFetch || canFetch(l.href.split("#")[0])));
+  const take = (href: string) => {
+    seen.add(normalize(href));
+    picked.push(href.split("#")[0]);
+  };
   for (const pattern of PRIORITY_PATHS) {
-    const match = page.internalLinks.find((l) => {
-      const n = normalize(l.href);
-      return !seen.has(n) && (pattern.test(new URL(l.href).pathname) || pattern.test(l.text));
-    });
-    if (match) {
-      seen.add(normalize(match.href));
-      picked.push(match.href.split("#")[0]);
-    }
     if (picked.length >= max) break;
+    const match = usable.find((l) => !seen.has(normalize(l.href)) && (pattern.test(new URL(l.href).pathname) || pattern.test(l.text)));
+    if (match) take(match.href);
+  }
+  for (const l of usable) {
+    if (picked.length >= max) break;
+    if (!seen.has(normalize(l.href))) take(l.href);
   }
   return picked;
 }

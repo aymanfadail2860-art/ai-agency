@@ -1,4 +1,4 @@
 export { ResearchHome, type ResearchHomeProps } from "./research-home";
-export { CompanyResearch, CompanyCard, JobProgress, type CompanyResearchProps } from "./company-research";
+export { BrandResearch, JobProgress, type BrandResearchProps } from "./brand-research";
 export { ResearchReportView } from "./report-view";
 export { ClassificationBadge, EngineBadge, PriorityBadge, ComplexityBadge, ScoreRing } from "./badges";

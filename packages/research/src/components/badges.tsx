@@ -16,6 +16,12 @@ export function ClassificationBadge({ classification }: { classification: ClaimC
         <Scale /> {CLASSIFICATION_LABELS.assessment}
       </Badge>
     );
+  if (classification === "unknown")
+    return (
+      <Badge variant="outline" title="Kan ikke afgøres ud fra de tilgængelige kilder">
+        <HelpCircle /> {CLASSIFICATION_LABELS.unknown}
+      </Badge>
+    );
   return (
     <Badge variant="warning" title="Antagelse, der skal verificeres med virksomheden">
       <HelpCircle /> {CLASSIFICATION_LABELS.hypothesis}

@@ -1,4 +1,4 @@
-import { isAiConfigured } from "./ai/anthropic";
+import { isAiConfigured, verifyAiModel } from "./ai/anthropic";
 import { integrationConfig } from "./config";
 import { getCvrProvider } from "./cvr";
 import { getSearchProvider } from "./search/brave";
@@ -58,4 +58,20 @@ export function getIntegrationStatus(): IntegrationStatus[] {
       envVars: ["RESEARCH_WEBSITE_FETCH", "RESEARCH_USER_AGENT"],
     },
   ];
+}
+
+/** Som `getIntegrationStatus`, men verificerer også AI-modellen via Anthropics Models API. */
+export async function getIntegrationStatusChecked(): Promise<IntegrationStatus[]> {
+  const list = getIntegrationStatus();
+  const ai = list.find((i) => i.key === "ai");
+  if (ai && ai.configured) {
+    const check = await verifyAiModel();
+    if (!check.available) {
+      ai.configured = false;
+      ai.missing = check.reason;
+    } else {
+      ai.provider = `Anthropic Claude (${check.displayName ?? check.model}, verificeret)`;
+    }
+  }
+  return list;
 }

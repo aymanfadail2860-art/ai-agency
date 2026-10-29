@@ -4,6 +4,7 @@ import { Button, Card, EmptyState, ModeBadge, Table, TBody, TD, TH, THead, TR } 
 import { formatDateTime, formatDkk } from "@agency/shared";
 import { ArrowRight, FileText } from "lucide-react";
 import type { QuoteTotals } from "../pricing";
+import { quoteRecipient } from "../recipient";
 
 export function QuoteList({ items }: { items: Array<{ quote: Quote; currentVersion: QuoteVersion; totals: QuoteTotals }> }) {
   if (items.length === 0) {
@@ -40,7 +41,11 @@ export function QuoteList({ items }: { items: Array<{ quote: Quote; currentVersi
               <TD className="font-medium">{quote.number}</TD>
               <TD>
                 <div className="flex items-center gap-2">
-                  {quote.company.name} <ModeBadge mode={quote.mode} />
+                  <span>
+                    {quoteRecipient(quote).displayName}
+                    {quoteRecipient(quote).showLegalName && <span className="block text-xs text-muted-foreground">{quoteRecipient(quote).legalName}</span>}
+                  </span>
+                  <ModeBadge mode={quote.mode} />
                 </div>
               </TD>
               <TD className="text-muted-foreground">v{currentVersion.versionNumber}</TD>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { isAiConfigured } from "@agency/integrations";
-import { QuoteEditor } from "@agency/quotes";
+import { QuoteEditor, quoteRecipient } from "@agency/quotes";
 import { getCatalog, getQuote } from "@agency/quotes/server";
 import { PageHeader } from "@agency/ui";
 import { orNotFound } from "@/lib/page";
@@ -16,7 +16,7 @@ export default async function QuotePage({ params }: { params: Promise<{ quoteId:
     <>
       <PageHeader
         eyebrow={`Tilbud ${quote.number}`}
-        title={quote.company.name}
+        title={quoteRecipient(quote).displayName}
         description={
           <Link href="/quotes" className="text-accent hover:underline">
             ← Alle tilbud

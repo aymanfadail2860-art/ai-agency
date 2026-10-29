@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { CONTRACT_REGISTRY, MODULES } from "@agency/core";
-import { getSettings, getStorageBackend, listEvents } from "@agency/core/server";
-import { getIntegrationStatus } from "@agency/integrations";
+import { getSettings, getStorageBackend, getUsageOverview, listEvents } from "@agency/core/server";
+import { getIntegrationStatusChecked } from "@agency/integrations";
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, PageHeader, Table, TBody, TD, TH, THead, TR } from "@agency/ui";
 import { formatDateTime } from "@agency/shared";
 import { CheckCircle2, CircleDashed } from "lucide-react";
@@ -11,8 +11,7 @@ export const metadata: Metadata = { title: "Indstillinger" };
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const [settings, events] = await Promise.all([getSettings(), listEvents(15)]);
-  const integrations = getIntegrationStatus();
+  const [settings, events, integrations, usage] = await Promise.all([getSettings(), listEvents(15), getIntegrationStatusChecked(), getUsageOverview()]);
   return (
     <>
       <PageHeader eyebrow="Platform" title="Indstillinger" description="Tilstand, integrationsstatus, modulkontrakter og hændelseslog." />
@@ -66,6 +65,39 @@ export default async function SettingsPage() {
                       {i.missing && <p className="mt-1 text-warning-foreground">{i.missing}</p>}
                       <p className="mt-1 font-mono text-[11px]">{i.envVars.join(", ")}</p>
                     </TD>
+                  </TR>
+                ))}
+              </TBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>API-forbrug i dag</CardTitle>
+            <CardDescription>Omkostningsgrænser beskytter mod uventede udgifter. Grænserne kan justeres med miljøvariabler (se .env.example).</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Tjeneste</TH>
+                  <TH className="text-right">Kald</TH>
+                  <TH className="text-right">Tokens (ind/ud)</TH>
+                  <TH className="text-right">Est. pris</TH>
+                  <TH className="text-right">Fejl</TH>
+                  <TH>Grænse</TH>
+                </TR>
+              </THead>
+              <TBody>
+                {usage.map((u) => (
+                  <TR key={u.provider} data-testid={`usage-${u.provider}`}>
+                    <TD className="font-medium">{{ anthropic: "Claude (AI)", brave: "Brave Search", cvr: "CVR-opslag", research_jobs: "Researchjob" }[u.provider]}</TD>
+                    <TD className="text-right tabular-nums">{u.calls}</TD>
+                    <TD className="text-right tabular-nums text-muted-foreground">{u.provider === "anthropic" ? `${u.inputTokens.toLocaleString("da-DK")} / ${u.outputTokens.toLocaleString("da-DK")}` : "—"}</TD>
+                    <TD className="text-right tabular-nums">{u.provider === "anthropic" ? `${u.estimatedCostUsd.toFixed(3)} USD` : "—"}</TD>
+                    <TD className="text-right tabular-nums">{u.errors}</TD>
+                    <TD className="text-sm text-muted-foreground">{u.limit}</TD>
                   </TR>
                 ))}
               </TBody>

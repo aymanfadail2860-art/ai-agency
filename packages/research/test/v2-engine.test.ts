@@ -36,6 +36,7 @@ describe("Scenarie A — CVR-baseret research", () => {
     expect(report.digitalMaturity!.level).not.toBe("unknown");
     expect(report.meetingQuestions!.length).toBeGreaterThan(3);
     expect(report.overallRecommendation).toMatch(/starte med/);
+    expect(report.websiteAnalysis!.blocked).toHaveLength(0);
     for (const r of report.recommendations) {
       expect(r.score.criteria.map((c) => c.key)).toEqual(["relevance", "business_value", "evidence", "implementation_ease"]);
       expect(r.customerQuestions!.length).toBeGreaterThan(0);

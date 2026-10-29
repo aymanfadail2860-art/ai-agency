@@ -84,6 +84,13 @@ describe("calculateQuoteTotals", () => {
     expect(t.monthly.subtotal).toBe(33.63);
   });
 
+  it("lader engangsydelser indgå i engangsbeløbet uden abonnement", () => {
+    const t = calculateQuoteTotals({ vatRate: 0.25, discount: none, lineItems: [line("a", 10000, 1000), { ...line("b", 5000, 999), kind: "one_time" as const }] });
+    expect(t.implementation.exclVat).toBe(15000);
+    expect(t.monthly.exclVat).toBe(1000);
+    expect(t.lines[1]).toEqual({ id: "b", implementation: 5000, monthly: 0 });
+  });
+
   it("håndterer tomt tilbud og 0 % moms", () => {
     const empty = calculateQuoteTotals({ vatRate: 0.25, discount: none, lineItems: [] });
     expect(empty.firstYear.inclVat).toBe(0);

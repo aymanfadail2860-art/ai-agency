@@ -151,7 +151,7 @@ export function buildRecommendations(input: RecommendInput): ServiceRecommendati
 
   // Kvalitet frem for antal: dokumenterede behov først; branchebaserede hypoteser kun med høj branchefit.
   const documented = candidates.filter((c) => c.matched.length > 0 && c.score.total >= 45 && c.fit >= 0.35);
-  const hypotheses = candidates.filter((c) => c.matched.length === 0 && c.fit >= (segment === "other" ? 2 : 0.8));
+  const hypotheses = candidates.filter((c) => c.matched.length === 0 && c.score.total >= 45 && c.fit >= (segment === "other" ? 2 : 0.8));
   const eligible = [...documented, ...hypotheses].sort((a, b) => b.score.total - a.score.total).slice(0, max);
 
   return eligible.map(({ item, matched, score }) => {
@@ -241,7 +241,7 @@ export function buildMeetingQuestions(recommendations: ServiceRecommendation[], 
 export function buildOverallRecommendation(brandName: string, recommendations: ServiceRecommendation[]): string {
   if (recommendations.length === 0) return `Datagrundlaget er for begrænset til at anbefale konkrete services til ${brandName}. Næste skridt bør være en indledende samtale.`;
   const top = [...recommendations].sort((a, b) => b.score.total - a.score.total);
-  const first = top.slice(0, 2).map((r) => r.serviceName.toLowerCase());
-  const later = top.slice(2, 4).map((r) => r.serviceName.toLowerCase());
-  return `Vi anbefaler at starte med ${first.join(" og ")}, som har det stærkeste grundlag i researchen${later.length ? `, og derefter vurdere ${later.join(" og ")}` : ""}. Behovenes omfang skal bekræftes på et kundemøde, før der kan sættes forventninger til effekt.`;
+  const first = top.slice(0, 2).map((r) => lowerFirst(r.serviceName));
+  const later = top.slice(2, 4).map((r) => lowerFirst(r.serviceName));
+  return `Vi anbefaler at starte med ${first.join(" samt ")}, som har det stærkeste grundlag i researchen${later.length ? `. Derefter bør ${later.join(" samt ")} vurderes` : ""}. Behovenes omfang skal bekræftes på et kundemøde, før der kan sættes forventninger til effekt.`;
 }

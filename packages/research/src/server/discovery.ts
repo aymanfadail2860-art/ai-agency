@@ -1,6 +1,7 @@
 import type { Company, Establishment, Mode } from "@agency/core";
 import { brandRegistry, companyRegistry, establishmentRegistry, normalizeDomain, relationRegistry } from "@agency/core/server";
 import {
+  assertSafeUrl,
   getCvrProvider,
   safeFetch,
   type CvrLookup,
@@ -248,6 +249,8 @@ export async function discoverByUrl(input: string, mode: Mode, ds: DiscoverySour
   if (ds.isDemo && !domain.endsWith(".example")) throw new AppError("mode_mismatch", "I Demo Mode kan kun de fiktive .example-adresser undersøges. Skift til Live Mode for rigtige hjemmesider.");
   if (!ds.isDemo && domain.endsWith(".example")) throw new AppError("mode_mismatch", "Fiktive .example-adresser kan kun bruges i Demo Mode.");
 
+  // SSRF: interne og private adresser afvises, før noget hentes.
+  if (!ds.isDemo) await assertSafeUrl(url);
   const existing = await brandRegistry.findByDomain(mode, domain);
   let website: DiscoveryResult["website"] = null;
   const pages: Array<{ sourceId: string; page: ReturnType<typeof parseHtmlPage> }> = [];

@@ -7,7 +7,7 @@ import { fromOre, toOre } from "@agency/shared";
  * Ren, deterministisk funktion — bruges ens i editor, live preview, PDF og API.
  * Alle beregninger foregår i hele øre og afrundes kun ét sted pr. trin.
  *
- *  linje           = (pris + valgte tilvalg) × antal
+ *  linje           = (pris + valgte tilvalg) × antal (engangsydelser: kun engangspris)
  *  subtotal        = Σ linjer (separat for implementering og månedlig)
  *  rabat           = procent af subtotal, eller fast beløb (kan ikke overstige subtotal)
  *  ekskl. moms     = subtotal − rabat
@@ -36,14 +36,15 @@ export interface QuoteTotals {
 }
 
 type PricingInput = Pick<QuoteVersion, "vatRate"> & {
-  lineItems: Array<Pick<QuoteLineItem, "id" | "implementationPrice" | "monthlyPrice" | "quantity" | "addOns">>;
+  lineItems: Array<Pick<QuoteLineItem, "id" | "implementationPrice" | "monthlyPrice" | "quantity" | "addOns"> & { kind?: QuoteLineItem["kind"] }>;
   discount: Discount;
 };
 
 function lineOre(item: PricingInput["lineItems"][number]) {
   const qty = Math.max(1, Math.floor(item.quantity || 1));
   const impl = toOre(item.implementationPrice) + item.addOns.reduce((s, a) => s + toOre(a.implementationPrice), 0);
-  const monthly = toOre(item.monthlyPrice) + item.addOns.reduce((s, a) => s + toOre(a.monthlyPrice), 0);
+  // Engangsydelser har intet abonnement.
+  const monthly = item.kind === "one_time" ? 0 : toOre(item.monthlyPrice) + item.addOns.reduce((s, a) => s + toOre(a.monthlyPrice), 0);
   return { implementation: impl * qty, monthly: monthly * qty };
 }
 

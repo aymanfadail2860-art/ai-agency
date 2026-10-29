@@ -10,8 +10,8 @@ describe("modulregister", () => {
     expect(new Set(MODULES.map((m) => m.route)).size).toBe(5);
     expect(MODULES.find((m) => m.key === "production")!.route).toBe("/production");
   });
-  it("dokumenterer kontrakter — kun research.quote-handoff er aktiv i V1", () => {
-    expect(CONTRACT_REGISTRY.filter((c) => c.status === "active").map((c) => c.name)).toEqual(["research.quote-handoff"]);
+  it("dokumenterer kontrakter — kun research.quote-handoff (v2 og v1) er aktiv", () => {
+    expect(CONTRACT_REGISTRY.filter((c) => c.status === "active").map((c) => `${c.name}@${c.version}`)).toEqual(["research.quote-handoff@2", "research.quote-handoff@1"]);
   });
 });
 
@@ -94,5 +94,50 @@ describe("delt rate limiting", () => {
     await enforceSharedRateLimit("test:1.2.3.4", opts);
     await expect(enforceSharedRateLimit("test:1.2.3.4", opts)).rejects.toMatchObject({ code: "rate_limited" });
     await expect(enforceSharedRateLimit("test:5.6.7.8", opts)).resolves.toBeUndefined();
+  });
+});
+
+describe("brand-first identitet", () => {
+  it("genbruger brand pr. domæne og bekræfter aldrig relationer automatisk", async () => {
+    const { brandRegistry, relationRegistry, companyRegistry, normalizeDomain } = await import("@agency/core/server");
+    expect(normalizeDomain("https://WWW.Eksempel.dk/om")).toBe("eksempel.dk");
+    const a = await brandRegistry.create({ name: "Eksempel", mode: "demo", websiteUrl: "https://eksempel.example/", createdVia: "url" });
+    const b = await brandRegistry.create({ name: "Andet", mode: "demo", websiteUrl: "https://www.eksempel.example", createdVia: "url" });
+    expect(b.brand.id).toBe(a.brand.id);
+    const live = await brandRegistry.create({ name: "Eksempel", mode: "live", websiteUrl: "https://eksempel.example/", createdVia: "url" });
+    expect(live.brand.id).not.toBe(a.brand.id);
+    const noSite = await brandRegistry.create({ name: "Uden hjemmeside", mode: "demo", websiteUrl: null, createdVia: "cvr" });
+    expect(noSite.brand.primaryDomain).toBeNull();
+
+    const entity = await companyRegistry.register({
+      cvr: "24256790", name: "Test A/S", mode: "demo", address: null, industry: null, companyForm: null, status: null, foundedAt: null, employees: null,
+      contact: { phone: null, email: null, website: null }, adProtected: false, registrySource: { provider: "demo", retrievedAt: new Date().toISOString(), reference: null },
+    });
+    const rel = await relationRegistry.upsert(a.brand.id, entity, "suggested", { method: "website_cvr_mention", description: "Står på siden", url: null });
+    expect(rel.status).toBe("suggested");
+    const rejected = await relationRegistry.decide(rel.id, "rejected");
+    expect(rejected.status).toBe("rejected");
+    const again = await relationRegistry.upsert(a.brand.id, entity, "suggested", { method: "cvr_name_search", description: "Navnesøgning", url: null });
+    expect(again.status).toBe("rejected");
+    expect(again.evidence).toHaveLength(2);
+  });
+});
+
+describe("omkostningsgrænser", () => {
+  it("tæller forbrug pr. døgn og stopper ved budgettet", async () => {
+    const { recordUsage, getDailyUsage, assertWithinBudget } = await import("@agency/core/server");
+    process.env.AI_DAILY_BUDGET_USD = "0.5";
+    await recordUsage("anthropic", { calls: 1, inputTokens: 1000, outputTokens: 500, estimatedCostUsd: 0.3, model: "m" });
+    await expect(assertWithinBudget("anthropic")).resolves.toBeUndefined();
+    await recordUsage("anthropic", { calls: 1, estimatedCostUsd: 0.25 });
+    const u = await getDailyUsage("anthropic");
+    expect(u.calls).toBe(2);
+    expect(u.estimatedCostUsd).toBeCloseTo(0.55);
+    await expect(assertWithinBudget("anthropic")).rejects.toMatchObject({ code: "rate_limited" });
+    process.env.RESEARCH_DAILY_LIMIT = "1";
+    await recordUsage("research_jobs", { calls: 1 });
+    await expect(assertWithinBudget("research_jobs")).rejects.toMatchObject({ code: "rate_limited" });
+    delete process.env.AI_DAILY_BUDGET_USD;
+    delete process.env.RESEARCH_DAILY_LIMIT;
   });
 });

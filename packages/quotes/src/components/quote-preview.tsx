@@ -1,6 +1,7 @@
 import type { Quote, QuoteVersion } from "@agency/core";
 import { formatDate, formatDkk, formatPercent } from "@agency/shared";
 import { calculateQuoteTotals } from "../pricing";
+import { quoteRecipient } from "../recipient";
 
 type DraftVersion = Pick<QuoteVersion, "lineItems" | "discount" | "vatRate" | "specialTerms" | "validityDays" | "content" | "versionNumber" | "updatedAt">;
 
@@ -34,6 +35,7 @@ export function QuotePreview({ quote, version, agencyName }: { quote: Quote; ver
   const totals = calculateQuoteTotals(version);
   const c = version.content;
   const isDemo = quote.mode === "demo";
+  const recipient = quoteRecipient(quote);
   const validUntil = new Date(new Date(version.updatedAt).getTime() + version.validityDays * 86_400_000).toISOString();
 
   return (
@@ -42,15 +44,19 @@ export function QuotePreview({ quote, version, agencyName }: { quote: Quote; ver
         <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-blue-200">{agencyName}</p>
         <p className="mt-10 text-xs font-bold uppercase tracking-[0.18em] text-blue-300">Tilbud</p>
         <h2 className="mt-1 text-2xl font-semibold leading-tight">{c.title}</h2>
-        <p className="mt-3 text-sm text-blue-100">{quote.company.name}</p>
+        <p className="mt-3 text-sm text-blue-100" data-testid="preview-recipient">
+          {recipient.displayName}
+          {recipient.showLegalName && <span className="text-blue-200/80"> · {recipient.legalName}</span>}
+        </p>
         {isDemo && <span className="absolute right-6 top-6 rounded-full bg-amber-300 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-900">Demo</span>}
       </div>
       <div className="space-y-7 px-8 py-7">
         <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
           {[
-            ["Kunde", quote.company.name],
-            ["CVR", isDemo ? `${quote.company.cvr} (fiktivt)` : quote.company.cvr],
-            ["Adresse", quote.company.address ?? "—"],
+            ["Kunde", recipient.displayName],
+            ["Juridisk enhed", recipient.legalName ?? "Ikke bekræftet"],
+            ["CVR", recipient.cvr ? (isDemo ? `${recipient.cvr} (fiktivt)` : recipient.cvr) : "—"],
+            ["Adresse", recipient.address ?? recipient.website ?? "—"],
             ["Tilbudsnummer", `${quote.number} · v${version.versionNumber}`],
             ["Dato", formatDate(version.updatedAt)],
             ["Gyldigt til", formatDate(validUntil)],
@@ -101,7 +107,7 @@ export function QuotePreview({ quote, version, agencyName }: { quote: Quote; ver
             <thead>
               <tr className="border-b border-slate-200 text-left text-[10px] uppercase tracking-wide text-slate-500">
                 <th className="py-1.5 font-semibold">Service</th>
-                <th className="py-1.5 text-right font-semibold">Implementering</th>
+                <th className="py-1.5 text-right font-semibold">Engang/implementering</th>
                 <th className="py-1.5 text-right font-semibold">Pr. måned</th>
               </tr>
             </thead>
@@ -112,6 +118,7 @@ export function QuotePreview({ quote, version, agencyName }: { quote: Quote; ver
                   <tr key={item.id} className="border-b border-slate-100">
                     <td className="py-1.5 pr-2">
                       {item.name}
+                      {item.kind === "one_time" && <span className="text-slate-500"> (engangsydelse)</span>}
                       {item.quantity > 1 && ` (${item.quantity} stk.)`}
                       {item.addOns.length > 0 && <span className="text-slate-500"> + {item.addOns.map((a) => a.name).join(", ")}</span>}
                     </td>
@@ -166,7 +173,8 @@ export function QuotePreview({ quote, version, agencyName }: { quote: Quote; ver
           </div>
         </Section>
         <Section n={8} title="Forventede fordele"><Paragraphs text={c.benefits} /></Section>
-        <Section n={9} title="Vilkår">
+        <Section n={9} title="Forudsætninger og forbehold"><Paragraphs text={c.assumptions || "Forudsætninger afklares i fællesskab."} /></Section>
+        <Section n={10} title="Vilkår">
           <Paragraphs text={c.terms} />
           {version.specialTerms.trim() && (
             <div className="mt-3">
@@ -175,7 +183,7 @@ export function QuotePreview({ quote, version, agencyName }: { quote: Quote; ver
             </div>
           )}
         </Section>
-        <Section n={10} title="Næste skridt"><Paragraphs text={c.nextSteps} /></Section>
+        <Section n={11} title="Næste skridt"><Paragraphs text={c.nextSteps} /></Section>
       </div>
     </div>
   );

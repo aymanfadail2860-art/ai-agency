@@ -2,21 +2,25 @@
   "name": "@agency/crm",
   "version": "0.1.0",
   "private": true,
-  "description": "Modul 4 \u2014 CRM (Afventer)",
+  "description": "Modul 4 — CRM: virksomheder, kontakter, pipeline, aktiviteter og 360-graders kundeprofil",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./server": "./src/server/index.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@agency/core": "workspace:*",
+    "@agency/orchestrator": "workspace:*",
+    "@agency/shared": "workspace:*",
     "@agency/ui": "workspace:*",
     "lucide-react": "0.577.0",
     "zod": "3.25.76"
   },
   "peerDependencies": {
+    "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -24,6 +28,7 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "react": "19.1.1",
-    "react-dom": "19.1.1"
+    "react-dom": "19.1.1",
+    "next": "15.5.28"
   }
 }

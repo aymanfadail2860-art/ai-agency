@@ -3,6 +3,7 @@ import {
   DiscountSchema,
   QuoteContentSchema,
   AnyResearchQuoteHandoffSchema,
+  CrmQuoteRequestSchema,
   QuoteLineItemSchema,
   type ProductionIntakeV2,
   type Quote,
@@ -78,8 +79,7 @@ export async function intakeFromHandoff(input: unknown): Promise<QuoteIntakeResu
     };
   });
 
-  const now = nowIso();
-  const quoteBase =
+  const quoteBase: QuoteBase =
     handoff.version === 2
       ? {
           company: handoff.legalEntity,
@@ -99,6 +99,23 @@ export async function intakeFromHandoff(input: unknown): Promise<QuoteIntakeResu
           researchInsights: handoff.services.map((s) => ({ serviceName: s.serviceName, rationale: s.rationale, keyFindings: s.keyFindings, note: s.note })),
           mode: handoff.mode,
         };
+  return persistNewQuote(quoteBase, lineItems, catalog, {
+    sourceReportId: handoff.researchReportId,
+    handoffId: handoff.handoffId,
+    userNotes: handoff.userNotes,
+    eventPayload: { contractVersion: handoff.version },
+  });
+}
+
+type QuoteBase = Pick<Quote, "company" | "brand" | "researchSummary" | "overallRecommendation" | "researchOpportunities" | "researchInsights" | "mode">;
+
+async function persistNewQuote(
+  quoteBase: QuoteBase,
+  lineItems: QuoteLineItem[],
+  catalog: Awaited<ReturnType<typeof getCatalog>>,
+  meta: { sourceReportId: string | null; handoffId: string; userNotes: string; eventPayload: Record<string, unknown> },
+): Promise<QuoteIntakeResult> {
+  const now = nowIso();
   const versionBase = {
     lineItems,
     discount: { kind: "none" as const, value: 0, scope: "all" as const, label: null },
@@ -122,9 +139,9 @@ export async function intakeFromHandoff(input: unknown): Promise<QuoteIntakeResu
     id: newId("quote"),
     number: await nextQuoteNumber(),
     ...quoteBase,
-    sourceReportId: handoff.researchReportId,
-    handoffId: handoff.handoffId,
-    userNotes: handoff.userNotes,
+    sourceReportId: meta.sourceReportId,
+    handoffId: meta.handoffId,
+    userNotes: meta.userNotes,
     status: "draft",
     currentVersionId: version.id,
     versions: [version],
@@ -136,10 +153,79 @@ export async function intakeFromHandoff(input: unknown): Promise<QuoteIntakeResu
     type: "quote.created",
     source: "quotes",
     mode: quote.mode,
-    subject: { companyId: quote.company?.companyId, quoteId: quote.id, reportId: handoff.researchReportId },
-    payload: { number: quote.number, services: lineItems.length, handoffId: handoff.handoffId, contractVersion: handoff.version, brandId: quote.brand?.brandId ?? null },
+    subject: { companyId: quote.company?.companyId, quoteId: quote.id, reportId: meta.sourceReportId ?? undefined },
+    payload: { number: quote.number, services: lineItems.length, handoffId: meta.handoffId, brandId: quote.brand?.brandId ?? null, ...meta.eventPayload },
   });
   return { quoteId: quote.id, quoteNumber: quote.number, versionId: version.id };
+}
+
+/** CRM → Tilbud (`crm.quote-request@1`): tilbudsudkast for en salgsmulighed. Idempotent pr. requestId. */
+export async function intakeFromCrmRequest(input: unknown): Promise<QuoteIntakeResult> {
+  const request = CrmQuoteRequestSchema.parse(input);
+  const existing = await quoteStore.find((q) => q.handoffId === request.requestId);
+  if (existing) return { quoteId: existing.id, quoteNumber: existing.number, versionId: existing.currentVersionId };
+  const catalog = await getCatalog();
+  const lineItems: QuoteLineItem[] = request.services.map((service) => {
+    const item = catalog.find((c) => c.id === service.catalogItemId);
+    if (!item) throw new AppError("validation_error", `Ukendt service: ${service.catalogItemId}`);
+    return {
+      id: newId("quoteLineItem"),
+      kind: "service",
+      catalogItemId: item.id,
+      sourceRecommendationId: null,
+      name: item.name,
+      description: item.shortDescription,
+      deliverables: [...item.deliverables],
+      implementationPrice: item.implementationPrice,
+      monthlyPrice: item.monthlyPrice,
+      quantity: 1,
+      addOns: [],
+      estimatedWeeks: item.estimatedWeeks,
+      rationale: service.note,
+    };
+  });
+  return persistNewQuote(
+    {
+      company: request.legalEntity,
+      brand: request.brand,
+      researchSummary: request.researchSummary,
+      overallRecommendation: request.overallRecommendation || undefined,
+      researchOpportunities: undefined,
+      researchInsights: lineItems.map((li) => ({ serviceName: li.name, rationale: li.rationale ?? "Valgt i CRM-salgsmuligheden.", keyFindings: [], note: null })),
+      mode: request.mode,
+    },
+    lineItems,
+    catalog,
+    { sourceReportId: request.researchReportId, handoffId: request.requestId, userNotes: request.notes, eventPayload: { contract: "crm.quote-request@1", opportunityId: request.opportunity.opportunityId } },
+  );
+}
+
+/** Tilbuddet er sendt til kunden (registreres manuelt — platformen sender ingen e-mails). */
+export async function markQuoteSent(quoteId: string): Promise<Quote> {
+  const quote = await getQuote(quoteId);
+  if (quote.status === "sent") return quote;
+  if (quote.status !== "draft") throw new AppError("conflict", "Kun udkast kan markeres som sendt.");
+  const updated = await quoteStore.update(quoteId, (q) => ({ ...q, status: "sent" as const, updatedAt: nowIso() }));
+  await publishEvent({ type: "quote.sent", source: "quotes", mode: quote.mode, subject: { quoteId, companyId: quote.company?.companyId }, payload: { versionId: quote.currentVersionId } });
+  return updated!;
+}
+
+/** Kunden har afvist tilbuddet. Idempotent. */
+export async function rejectQuote(quoteId: string): Promise<Quote> {
+  const quote = await getQuote(quoteId);
+  if (quote.status === "rejected") return quote;
+  if (quote.status === "accepted") throw new AppError("conflict", "Tilbuddet er allerede accepteret.");
+  const updated = await quoteStore.update(quoteId, (q) => ({ ...q, status: "rejected" as const, updatedAt: nowIso() }));
+  await publishEvent({ type: "quote.rejected", source: "quotes", mode: quote.mode, subject: { quoteId, companyId: quote.company?.companyId }, payload: {} });
+  return updated!;
+}
+
+/** Fjerner et tilbud oprettet af CRM-demoen (kun Demo Mode). */
+export async function removeDemoQuote(quoteId: string): Promise<void> {
+  const quote = await quoteStore.get(quoteId);
+  if (!quote) return;
+  if (quote.mode !== "demo" || !quote.handoffId?.startsWith("crq_demo")) throw new AppError("conflict", "Kun CRM-demotilbud kan fjernes.");
+  await quoteStore.remove(quoteId);
 }
 
 export async function listQuotes(mode?: Quote["mode"]) {

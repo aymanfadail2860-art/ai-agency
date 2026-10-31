@@ -14,6 +14,8 @@
 
 **Kendt risiko, før betalte motorer aktiveres:** platformen har intet login. Med `ANTHROPIC_API_KEY` eller et rutine-token kan alle med linket bruge budgettet. Lofterne begrænser skaden, men adgangskontrol (anbefalet: Supabase Auth med én tilladt e-mail) bør indføres først. Se [v3-architecture.md §8](v3-architecture.md).
 
+**CRM (V3.3) — persondata uden login:** CRM gemmer kontaktpersoners navne, e-mails og telefonnumre. Uden adgangskontrol kan alle med URL'en læse og ændre dem. Brug kun demodata eller fiktive kontakter, indtil login er indført. CRM sender ingen e-mails, foretager ingen opkald og starter ingen betalte AI-opgaver (Echo-opgaverne er planlagte og blokeres af routeren). Se [crm.md](crm.md#sikkerhed-og-adgang).
+
 **Supabase-rådgivning:** `private.config` har RLS slået fra. Tabellen er kun tilgængelig for rollen `postgres` (ingen rettigheder for `anon`/`authenticated`), og `private`-skemaet eksponeres ikke via API'et, så den reelle risiko er lav. Anbefalet hærdning (kræver din godkendelse): `alter table private.config enable row level security;` (uden policies; påvirker ikke server-rollen).
 
 ## Implementeret i V1

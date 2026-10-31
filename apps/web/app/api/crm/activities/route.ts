@@ -1,18 +1,28 @@
-import { json } from "@/lib/http";
+import { getSettings } from "@agency/core/server";
+import { createActivity, listActivities, requireAccount } from "@agency/crm/server";
+import { AppError } from "@agency/shared";
+import { json, readJson, route } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
-/** CRM — afventer. Kontrakten er dokumenteret, men ikke implementeret i V1. */
-function notImplemented() {
+/** Aktiviteter (opkald, e-mails, møder, opgaver, opfølgninger, noter, påmindelser). Intet sendes eksternt. */
+export const GET = route(async (req) => {
+  const p = req.nextUrl.searchParams;
+  const view = p.get("view");
   return json(
-    {
-      error: { code: "not_implemented", message: "Afventer — modulet udvikles i en kommende version." },
-      contract: "crm.activity-sync@1",
-      documentation: "docs/api-contracts.md",
-    },
-    501,
+    await listActivities({
+      mode: (await getSettings()).mode,
+      accountId: p.get("accountId") ?? undefined,
+      kind: p.get("kind") ?? undefined,
+      view: view === "planned" || view === "overdue" || view === "upcoming" || view === "done" ? view : "all",
+    }),
   );
-}
+});
 
-export const GET = notImplemented;
-export const POST = notImplemented;
+export const POST = route(async (req) => {
+  const body = (await readJson(req)) as { accountId?: string };
+  const { mode } = await getSettings();
+  if (body.accountId && (await requireAccount(body.accountId)).mode !== mode) throw new AppError("mode_mismatch", "Virksomheden tilhører en anden tilstand.");
+  // Body valideres med CreateActivitySchema i createActivity.
+  return json(await createActivity(body as Parameters<typeof createActivity>[0]), 201);
+});

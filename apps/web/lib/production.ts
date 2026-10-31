@@ -10,6 +10,7 @@ import {
   seedDemoPortfolio,
 } from "@agency/production/server";
 import type { ProductionProject } from "@agency/production";
+import { linkProject, markAsCustomer, opportunitiesForQuote, syncFromQuote } from "@agency/crm/server";
 import { acceptQuote, buildProductionIntake, getQuote, intakeFromHandoff } from "@agency/quotes/server";
 import { AppError } from "@agency/shared";
 
@@ -29,11 +30,21 @@ export function ensureProductionWiring(): void {
   });
 }
 
-/** Kunden har accepteret: tilbuddet markeres accepteret, og kontrakten sendes til Produktion. Idempotent. */
+/**
+ * Kunden har accepteret: tilbuddet markeres accepteret, kontrakten sendes til
+ * Produktion, og tilknyttede CRM-salgsmuligheder bliver vundet og får projektet
+ * tilknyttet. Idempotent — giver aldrig dubletprojekter.
+ */
 export async function acceptQuoteAndCreateProject(quoteId: string): Promise<{ project: ProductionProject; created: boolean }> {
   ensureProductionWiring();
   const quote = await acceptQuote(quoteId);
-  return createFromIntake(buildProductionIntake(quote));
+  const result = await createFromIntake(buildProductionIntake(quote));
+  await syncFromQuote({ id: quote.id, number: quote.number, status: "accepted" });
+  for (const opp of await opportunitiesForQuote(quote.id)) {
+    await linkProject(opp.id, result.project.id, result.project.name);
+    await markAsCustomer(opp.accountId, `Aftale overført til Produktion: ${result.project.name}`);
+  }
+  return result;
 }
 
 const RN_HANDOFF_ID = "hnd_demo_restaurant_nord";

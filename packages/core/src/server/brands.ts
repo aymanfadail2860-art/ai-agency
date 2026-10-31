@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { AppError, newId, nowIso } from "@agency/shared";
 import {
   BrandLegalEntityRelationSchema,
@@ -28,6 +29,14 @@ const brandStore = createCollectionStore("platform", "brands", BrandSchema);
 const websiteStore = createCollectionStore("platform", "websites", WebsiteSchema);
 const relationStore = createCollectionStore("platform", "brand-legal-relations", BrandLegalEntityRelationSchema);
 const establishmentStore = createCollectionStore("platform", "establishments", EstablishmentSchema);
+
+/**
+ * Deterministiske id'er for nye brands/hjemmesider med en naturlig nøgle
+ * (domæne eller — for CRM — normaliseret navn): samtidige oprettelser fra
+ * flere serverinstanser skriver til samme post i stedet for at lave dubletter.
+ */
+const stableId = (prefix: string, key: string) => `${prefix}_${createHash("sha256").update(key).digest("hex").slice(0, 20)}`;
+const normalizeName = (name: string) => name.trim().toLowerCase().replace(/\s+/g, " ");
 
 export function normalizeDomain(input: string): string {
   const url = new URL(/^https?:\/\//i.test(input) ? input : `https://${input}`);
@@ -72,15 +81,20 @@ export const brandRegistry = {
   },
 
   /** Opretter et brand — eller genbruger et eksisterende med samme domæne. */
-  async create(input: { name: string; mode: Mode; websiteUrl: string | null; createdVia: Brand["createdVia"]; description?: string | null; discoveredVia?: Website["discoveredVia"] }): Promise<{ brand: Brand; created: boolean }> {
+  async create(input: { name: string; mode: Mode; websiteUrl: string | null; createdVia: Brand["createdVia"]; description?: string | null; discoveredVia?: Website["discoveredVia"]; dedupeByName?: boolean }): Promise<{ brand: Brand; created: boolean }> {
     const domain = input.websiteUrl ? normalizeDomain(input.websiteUrl) : null;
     if (domain) {
       const existing = await brandRegistry.findByDomain(input.mode, domain);
       if (existing) return { brand: existing, created: false };
     }
+    const key = domain ? `${input.mode}:domain:${domain}` : input.dedupeByName ? `${input.mode}:name:${normalizeName(input.name)}` : null;
+    if (key) {
+      const existing = await brandStore.get(stableId("brd", key));
+      if (existing) return { brand: existing, created: false };
+    }
     const now = nowIso();
     const brand = await brandStore.upsert({
-      id: newId("brand"),
+      id: key ? stableId("brd", key) : newId("brand"),
       name: input.name.trim(),
       mode: input.mode,
       primaryDomain: domain,
@@ -103,7 +117,7 @@ export const brandRegistry = {
     const existing = await websiteStore.find((w) => w.brandId === brandId && w.domain === domain);
     if (existing) return existing;
     const now = nowIso();
-    return websiteStore.upsert({ id: newId("website"), brandId, url, domain, isPrimary, discoveredVia, createdAt: now, updatedAt: now });
+    return websiteStore.upsert({ id: stableId("web", `${brandId}:${domain}`), brandId, url, domain, isPrimary, discoveredVia, createdAt: now, updatedAt: now });
   },
 
   async websites(brandId: string): Promise<Website[]> {

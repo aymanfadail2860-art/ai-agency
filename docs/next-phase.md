@@ -26,8 +26,10 @@ Forslag i prioriteret rækkefølge. Kontrakterne er allerede dokumenteret i [api
 
 ## 4. CRM (Modul 4)
 
-- Abonnér på platformhændelser → `crm.activity-sync@1`.
-- Kontaktpersoner med eksplicit samtykke (reklamebeskyttelse), pipeline (`SalesOpportunity.stage`), opfølgninger og tilbudshistorik via Tilbuds API.
+**Gennemført i V3 etape 3** — se [crm.md](crm.md). Tilbage:
+
+- Echo-opgaver (`crm.follow_up_draft`, `crm.meeting_prep`, …) skal implementeres, når adgangskontrol er på plads.
+- Normaliserede CRM-tabeller med RLS, når flere brugere eller større volumen kommer (forslag i crm.md).
 
 ## 5. Dashboard (Modul 5)
 

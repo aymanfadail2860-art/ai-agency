@@ -30,6 +30,11 @@ export const ID_PREFIXES = {
   costEntry: "pco",
   productionIntake: "pin",
   approval: "apr",
+  crmAccount: "acc",
+  crmContact: "con",
+  salesOpportunity: "sop",
+  crmActivity: "act",
+  crmQuoteRequest: "crq",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

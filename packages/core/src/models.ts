@@ -481,7 +481,7 @@ export const BrandSchema = z.object({
   /** Normaliseret primært domæne (uden www) — bruges til at undgå dubletter. */
   primaryDomain: z.string().nullable(),
   description: z.string().nullable(),
-  createdVia: z.enum(["cvr", "url", "legacy_v1", "demo"]),
+  createdVia: z.enum(["cvr", "url", "legacy_v1", "demo", "crm"]),
   ...Timestamps,
 });
 export type Brand = z.infer<typeof BrandSchema>;

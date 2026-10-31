@@ -790,3 +790,16 @@ export async function findProjectByQuote(quoteId: string): Promise<ProductionPro
 export async function listDemoProjects(): Promise<ProductionProject[]> {
   return (await projectStore.list()).filter((p) => p.isDemo && p.mode === "demo");
 }
+
+/** Filer og leverancereferencer for flere projekter (fx til CRM's dokumentoversigt). */
+export async function filesForProjects(projectIds: string[]): Promise<ProjectFile[]> {
+  const ids = new Set(projectIds);
+  return (await fileStore.list()).filter((f) => ids.has(f.projectId)).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+/** Markér et projekt som demoprojekt (fx oprettet af CRM-demoen), så demo-nulstilling kan fjerne det. */
+export async function markProjectAsDemo(projectId: string): Promise<void> {
+  const project = await requireProject(projectId);
+  if (project.mode !== "demo") throw new AppError("conflict", "Kun projekter i Demo Mode kan markeres som demo.");
+  await projectStore.update(projectId, (p) => ({ ...p, isDemo: true, updatedAt: nowIso() }));
+}

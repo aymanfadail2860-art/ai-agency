@@ -169,7 +169,6 @@ test("Scenarie D: flere juridiske enheder vælges ikke automatisk", async ({ pag
 
 test("Afventende moduler", async ({ page }) => {
   for (const [nav, title] of [
-    ["nav-crm", "CRM"],
     ["nav-dashboard", "Dashboard"],
   ] as const) {
     await page.goto("/research");
@@ -184,9 +183,9 @@ test("API-kontrakter og validering", async ({ request }) => {
   expect(bad.status()).toBe(400);
   // Produktion er aktiv (V3): intake validerer kontrakten.
   expect((await request.post("/api/production/intake", { data: {} })).status()).toBe(400);
-  for (const path of ["/api/crm/activities", "/api/dashboard/metrics"]) {
-    expect((await request.post(path, { data: {} })).status()).toBe(501);
-  }
+  // CRM er aktiv (V3 etape 3): aktiviteter valideres server-side.
+  expect((await request.post("/api/crm/activities", { data: {} })).status()).toBe(400);
+  expect((await request.post("/api/dashboard/metrics", { data: {} })).status()).toBe(501);
   expect((await request.post("/api/research/discover", { data: { type: "url", value: "ikke en url" } })).status()).toBe(400);
   expect((await request.put("/api/settings", { data: { mode: "live" }, headers: { origin: "https://evil.example" } })).status()).toBe(403);
   const status = await (await request.get("/api/integrations/status")).json();

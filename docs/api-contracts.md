@@ -99,23 +99,38 @@ Svar: `201 { projectId: "prj_…", created: true }`.
 
 ---
 
-## 3. `crm.activity-sync@1`: PLANLAGT
+## 3a. `crm.quote-request@1`: AKTIV (V3, etape 3)
 
-**Research/Tilbud → CRM.** Registrerer salgsaktiviteter på kunden. Endepunkt: `POST /api/crm/activities` (501 i V1).
+**CRM → Tilbud.** En salgsmulighed bliver til et forudfyldt tilbudsudkast. Endepunkt:
+`POST /api/crm/opportunities/:id/quote` (komposition i `apps/web/lib/crm.ts`) →
+`intakeFromCrmRequest` i Tilbud. Idempotent pr. `requestId`, som gemmes i tilbuddets
+`handoffId`. Et eksisterende, ikke-afvist tilbud genbruges.
 
 ```ts
 {
-  contract: "crm.activity-sync", version: 1,
-  company: { companyId, cvr, name },
-  activity:
-    | { type: "research_completed", reportId, at }
-    | { type: "quote_created", quoteId, at }
-    | { type: "quote_version_created", quoteId, versionNumber, at }
-    | { type: "quote_accepted", quoteId, at }
+  contract: "crm.quote-request", version: 1,
+  requestId: "crq_…",             // demo: "crq_demo_<run>_…"
+  createdAt: "ISO-8601", mode: "demo" | "live",
+  brand: { brandId, name, website },
+  legalEntity: { companyId, cvr, name, address } | null,   // kun ved én bekræftet relation
+  opportunity: { opportunityId: "sop_…", title },
+  services: [{ catalogItemId, note }],                     // 1-10, skal findes i kataloget
+  researchReportId: "rrep_…" | null,
+  researchSummary, overallRecommendation, notes
 }
 ```
 
-Kan genereres direkte fra platformens hændelseslog (`research.completed`, `quote.created`, `quote.version.created`).
+Svar: `{ quoteId, quoteNumber, created }`. Statusændringer går den anden vej via
+`POST /api/quotes/:id/status` (`sent` | `rejected`) og accept. Reglerne for, hvordan
+salgsmuligheden følger med, står i [crm.md](crm.md#integrationer).
+
+## 3b. `crm.activity-sync@1`: PLANLAGT (ikke i brug)
+
+Oprindeligt tænkt som hændelsesbaseret aktivitetssynk fra Research/Tilbud. I V3.3 læser
+CRM i stedet rapporter, tilbud og projekter direkte via brandet (ingen kopier), og
+tilbudsstatus synkroniseres ved ændringen. `POST /api/crm/activities` er nu CRM's egen
+aktivitets-API (valideret, `400` ved ugyldige data). Alle CRM-endepunkter står i
+[crm.md](crm.md#api).
 
 ---
 

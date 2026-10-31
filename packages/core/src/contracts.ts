@@ -92,6 +92,27 @@ export const QuoteIntakeResultSchema = z.object({
 });
 export type QuoteIntakeResult = z.infer<typeof QuoteIntakeResultSchema>;
 
+/**
+ * V3: CRM → Tilbud. En salgsmulighed beder Tilbud om et udkast med valgte
+ * services og kundens brand. Idempotent pr. requestId.
+ */
+export const CrmQuoteRequestSchema = z.object({
+  contract: z.literal("crm.quote-request"),
+  version: z.literal(1),
+  requestId: z.string().startsWith("crq_"),
+  createdAt: IsoDate,
+  mode: ModeSchema,
+  brand: z.object({ brandId: z.string().startsWith("brd_"), name: z.string().min(1), website: z.string().nullable() }),
+  legalEntity: CompanyRefSchema.extend({ address: z.string().nullable() }).nullable(),
+  opportunity: z.object({ opportunityId: z.string().startsWith("sop_"), title: z.string().min(1) }),
+  services: z.array(z.object({ catalogItemId: z.string().min(1), note: z.string().max(500).nullable() })).min(1, "Vælg mindst én service.").max(10),
+  researchReportId: z.string().startsWith("rrep_").nullable(),
+  researchSummary: z.string().max(4000),
+  overallRecommendation: z.string().max(2000),
+  notes: z.string().max(4000),
+});
+export type CrmQuoteRequest = z.infer<typeof CrmQuoteRequestSchema>;
+
 /* -------------------------------------------------------------------------- */
 /* FREMTIDIG (dokumenteret, ikke implementeret): Tilbud → Produktion          */
 /* -------------------------------------------------------------------------- */
@@ -197,6 +218,15 @@ export const CONTRACT_REGISTRY = [
     description: "V1: Overfører valgte services, kundeidentitet og researchresumé fra Research til Tilbud (understøttes fortsat).",
   },
   {
+    name: "crm.quote-request",
+    version: 1,
+    from: "crm",
+    to: "quotes",
+    status: "active",
+    endpoint: "POST /api/crm/opportunities/:id/quote",
+    description: "V3: Salgsmulighed → tilbudsudkast med valgte services og kundens brand (CVR valgfrit). Idempotent pr. requestId.",
+  },
+  {
     name: "quotes.production-intake",
     version: 2,
     from: "quotes",
@@ -220,8 +250,8 @@ export const CONTRACT_REGISTRY = [
     from: "research, quotes",
     to: "crm",
     status: "planned",
-    endpoint: "POST /api/crm/activities (svarer 501 i V1)",
-    description: "Registrerer salgsaktiviteter på kunden i CRM.",
+    endpoint: "(hændelsesbaseret synk — ikke i brug)",
+    description: "Planlagt hændelsesbaseret aktivitetssynk. I V3.3 læser CRM research, tilbud og projekter direkte via brandet og opdateres af tilbudsstatus; POST /api/crm/activities er CRM's egen aktivitets-API.",
   },
   {
     name: "dashboard.metric-datapoint",

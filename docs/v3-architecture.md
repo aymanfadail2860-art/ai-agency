@@ -157,5 +157,9 @@ fordi der ikke findes credentials.
    faser med porte i AOS, agenttilknytning og Job Center-integration. Næste: implementér
    `production.agent_task` (rutine-slot + resultatformat), så Forge/Link/Vega kan udføre
    opgaver i Live Mode.
-5. CRM og Dashboard på de samme jobs, hændelser og omkostningsdata.
-6. Normaliserede tabeller og en egentlig jobkø, når belastningen kræver det.
+5. ~~CRM~~ **Gennemført i etape 3** ([crm.md](crm.md)): virksomheder uden dubletter, pipeline,
+   aktiviteter, 360-profil, Research/Tilbud/Produktion-integration og Echo-opgaver i Job Center
+   (planlagte typer, blokeres ærligt). Næste: implementér `crm.follow_up_draft` og
+   `crm.meeting_prep` (Echo), når adgangskontrol er på plads.
+6. Dashboard på de samme jobs, hændelser og omkostningsdata (sidste moduludvikling).
+7. Normaliserede tabeller (forslag for CRM i [crm.md](crm.md#vurdering-af-datamodellen)) og en egentlig jobkø, når belastningen kræver det.

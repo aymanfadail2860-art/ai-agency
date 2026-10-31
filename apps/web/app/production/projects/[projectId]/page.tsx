@@ -5,6 +5,7 @@ import { getAgentStates, getApproval } from "@agency/orchestrator/server";
 import { ProjectDetail, PriorityBadge, ProjectStatusBadge, SimulatedBadge, getServiceBaseDefinition } from "@agency/production";
 import { blockersFor, getFinance, getProject, jobsForProject, summarize } from "@agency/production/server";
 import { ModeBadge, PageHeader } from "@agency/ui";
+import { findAccountByBrand } from "@agency/crm/server";
 import { orNotFound } from "@/lib/page";
 import { ensureProductionWiring } from "@/lib/production";
 
@@ -22,6 +23,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
     getAgentStates(project.mode),
     project.pendingGate ? getApproval(project.pendingGate.approvalId).catch(() => null) : Promise.resolve(null),
   ]);
+  const crmAccount = project.customer.brandId ? await findAccountByBrand(project.customer.brandId) : null;
   const base = getServiceBaseDefinition(project.serviceBaseKey);
   return (
     <>
@@ -37,9 +39,16 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
           </>
         }
         description={
-          <Link href="/production" className="text-accent hover:underline">
-            ← Produktionsoversigt
-          </Link>
+          <span className="flex flex-wrap gap-x-4 gap-y-1">
+            <Link href="/production" className="text-accent hover:underline">
+              ← Produktionsoversigt
+            </Link>
+            {crmAccount && (
+              <Link href={`/crm/companies/${crmAccount.id}?tab=projects`} className="text-accent hover:underline" data-testid="project-crm-link">
+                Kundeprofil i CRM →
+              </Link>
+            )}
+          </span>
         }
       />
       <ProjectDetail

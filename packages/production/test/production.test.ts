@@ -48,7 +48,8 @@ describe("Produktionsprojekt", () => {
     expect(bundle.tasks.length).toBeGreaterThan(15);
     expect(bundle.tasks.find((t) => t.phase === "development")?.assignee?.name).toBe("Forge");
     expect(bundle.tests).toHaveLength(10);
-    expect(bundle.events[0]?.kind).toBe("agent_assigned");
+    // Hændelser i samme millisekund har ingen fast rækkefølge — tjek indholdet.
+    expect(bundle.events.map((e) => e.kind).sort()).toEqual(["agent_assigned", "created"]);
   });
 
   it("afviser ukendte agenter og leveringsdato før start", async () => {

@@ -42,7 +42,7 @@ export const MODULES: readonly ModuleDescriptor[] = [
     key: "crm",
     name: "CRM",
     route: "/crm",
-    status: "pending",
+    status: "active",
     icon: "users",
     description: "Kunder, kontaktpersoner, pipeline og opfølgning.",
   },

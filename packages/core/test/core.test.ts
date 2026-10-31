@@ -4,14 +4,19 @@ import { CONTRACT_REGISTRY, DEFAULT_SERVICE_CATALOG, MODULES, ProductionIntakeSc
 import { checkRateLimit, companyRegistry, createCollectionStore, listEvents, resetRateLimits } from "@agency/core/server";
 
 describe("modulregister", () => {
-  it("indeholder seks selvstændige moduler med egne routes; Research, Tilbud og AOS er aktive", () => {
+  it("indeholder seks selvstændige moduler med egne routes; Research, Tilbud, Produktion og AOS er aktive", () => {
     expect(MODULES.map((m) => m.key)).toEqual(["research", "quotes", "production", "crm", "dashboard", "aos"]);
-    expect(MODULES.filter((m) => m.status === "active").map((m) => m.key)).toEqual(["research", "quotes", "aos"]);
+    expect(MODULES.filter((m) => m.status === "active").map((m) => m.key)).toEqual(["research", "quotes", "production", "aos"]);
     expect(new Set(MODULES.map((m) => m.route)).size).toBe(6);
     expect(MODULES.find((m) => m.key === "production")!.route).toBe("/production");
   });
-  it("dokumenterer kontrakter — kun research.quote-handoff (v2 og v1) er aktiv", () => {
-    expect(CONTRACT_REGISTRY.filter((c) => c.status === "active").map((c) => `${c.name}@${c.version}`)).toEqual(["research.quote-handoff@2", "research.quote-handoff@1"]);
+  it("dokumenterer kontrakter — handoff og production-intake (v2 og v1) er aktive", () => {
+    expect(CONTRACT_REGISTRY.filter((c) => c.status === "active").map((c) => `${c.name}@${c.version}`)).toEqual([
+      "research.quote-handoff@2",
+      "research.quote-handoff@1",
+      "quotes.production-intake@2",
+      "quotes.production-intake@1",
+    ]);
   });
 });
 

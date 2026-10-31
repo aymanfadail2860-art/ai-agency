@@ -19,7 +19,7 @@ export {
   type JobFilter,
 } from "./jobs";
 export { agentRegistry, ensureAgentsSeeded, NewAgentVersionSchema, type AgentWithVersion, type NewAgentVersion } from "./agents";
-export { listApprovals, getApproval } from "./approvals";
-export { decideApproval } from "./decisions";
+export { listApprovals, getApproval, createApproval } from "./approvals";
+export { decideApproval, registerApprovalHandler, type ApprovalHandler } from "./decisions";
 export { getAgentStates, getCommandCenter, getActivity, getPerformance, deriveAgentStatus, type AgentState, type ActivityItem, type CommandCenterStats, type PerformanceReport } from "./metrics";
 export { listIntegrations, testIntegration, type ManagedIntegration, type IntegrationTestResult } from "./integrations";

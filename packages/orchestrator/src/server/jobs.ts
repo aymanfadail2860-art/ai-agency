@@ -88,6 +88,8 @@ export const SubmitJobSchema = z.object({
   priority: JobPrioritySchema.default("normal"),
   idempotencyKey: z.string().max(200).optional(),
   dependsOn: z.array(z.string().startsWith("aij_")).max(20).default([]),
+  /** Overstyr opgavetypens standardagent (fx den agent, der er tildelt en produktionsopgave). */
+  agentKey: z.string().regex(/^[a-z][a-z0-9-]{1,30}$/).optional(),
 });
 export type SubmitJobInput = z.input<typeof SubmitJobSchema>;
 
@@ -167,7 +169,8 @@ export async function submitJob(raw: SubmitJobInput, options: { defer?: Defer } 
     if (!(await jobStore.get(dep))) throw new AppError("validation_error", `Afhængigheden ${dep} findes ikke.`);
   }
 
-  const agent = await agentRegistry.resolveForTask(task.defaultAgent);
+  const agent = await agentRegistry.resolveForTask(input.agentKey ?? task.defaultAgent);
+  if (input.agentKey && !agent) throw new AppError("validation_error", `Agenten ${input.agentKey} findes ikke i Agent Manager.`);
   const decision = routeTask({
     task,
     policy: input.policy,
@@ -500,6 +503,7 @@ export interface JobFilter {
   status?: string;
   agentId?: string;
   brandId?: string;
+  projectId?: string;
   taskType?: string;
   limit?: number;
 }
@@ -514,6 +518,7 @@ export async function listJobs(filter: JobFilter = {}): Promise<PublicAiJob[]> {
         (!filter.status || j.status === filter.status) &&
         (!filter.agentId || j.agentId === filter.agentId) &&
         (!filter.brandId || j.subject.brandId === filter.brandId) &&
+        (!filter.projectId || j.subject.projectId === filter.projectId) &&
         (!filter.taskType || j.taskType === filter.taskType),
     )
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))

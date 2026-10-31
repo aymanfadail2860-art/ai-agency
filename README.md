@@ -8,7 +8,7 @@ Bureauets **interne arbejdsplatform**: research, salg, produktion, levering, kun
 |---|---|---|---|
 | 1 | Research | `/research` | **Aktiv (V2)**: brand-first research via URL eller CVR, Website Intelligence, websøgning, konkurrenter, Claude-analyse, 5-10 serviceanbefalinger, kommerciel rapport |
 | 2 | Tilbud | `/quotes` | **Aktiv (V2)**: tilbud til brand med eller uden CVR, engangsydelser, forudsætninger og forbehold, AI-tekst, versioner, PDF |
-| 3 | Produktion & Levering | `/production` | Afventer: visuelt preview + dokumenteret kontrakt |
+| 3 | Produktion & Levering | `/production` | **Aktiv (V3.2)**: projekter fra accepterede tilbud, 11 faser med faseporte i AOS, opgaver, agenter (AOS), arkitektur, filer, QA, aktivitet, økonomi, Service Factory og guidet demo (Restaurant Nord). Se [docs/production.md](docs/production.md) |
 | 4 | CRM | `/crm` | Afventer: visuelt preview + dokumenteret kontrakt |
 | 5 | Dashboard | `/dashboard` | Afventer: visuelt preview (demo-markeret) + dokumenteret kontrakt |
 | 6 | AOS — Agent Operating System | `/aos` | **Aktiv (V3)**: Command Center, isometrisk Agent Office, Agent Library (versioneret), Job Center, Live Activity, Godkendelser, Performance & Cost, Integration Manager |
@@ -78,8 +78,8 @@ Indstillinger viser, om platformen bruger "Supabase (database)" eller "lokale JS
 ## Test
 
 ```bash
-pnpm test        # Vitest: 106 enhedstests (router, Job Center, callbacks, agentversioner, brand-first, scoring, priser, kontrakter, SSRF, budgetter …)
-pnpm test:e2e    # Playwright: scenarierne A-F + AOS (Job Center, Agent Office, godkendelse af agentversion, deaktiveret agent, integrationer)
+pnpm test        # Vitest: 115 enhedstests (router, Job Center, callbacks, agentversioner, brand-first, scoring, priser, kontrakter, SSRF, budgetter …)
+pnpm test:e2e    # Playwright: scenarierne A-F + AOS + Produktion (tilbud → projekt, faser, Job Center, guidet demo, Service Factory)
 LIVE_BASE_URL=https://… pnpm exec playwright test -c playwright.live.config.ts   # live-test mod en deployet instans
 pnpm typecheck   # TypeScript i alle pakker
 ```
@@ -101,7 +101,7 @@ ai-agency/
 │   ├── integrations/         adapters: CVR (cvr.dev/virk.dk), Claude, Brave Search, sikker webhentning
 │   ├── research/             Modul 1 — komponenter + /server (pipeline, signaler, scoring, demo-data)
 │   ├── quotes/               Modul 2 — komponenter, prisberegning + /server (tilbud, katalog, PDF)
-│   ├── production/           Modul 3 — preview + fremtidige kontrakter (ingen forretningslogik)
+│   ├── production/           Modul 3 — projekter, faser, opgaver, QA, Service Factory + /server (bruger AOS)
 │   ├── crm/                  Modul 4 — preview + fremtidige kontrakter
 │   ├── dashboard/            Modul 5 — preview + fremtidige kontrakter
 │   ├── orchestrator/         FÆLLES AI-INFRASTRUKTUR: Job Center, Execution Router, Agent Manager,
@@ -119,6 +119,7 @@ Hvert forretningsmodul har en klientsikker indgang (`@agency/<modul>`: komponent
 ## Dokumentation
 
 - [V3-arkitektur: hybrid AI-motor, orchestrator og AOS](docs/v3-architecture.md)
+- [Produktion & Levering: faser, AOS-integration, Service Factory og demo](docs/production.md)
 - [Claude Code som motor — verificerede muligheder og begrænsninger](docs/claude-code-integration.md)
 - [Arkitektur og modulgrænser](docs/architecture.md)
 - [API-kontrakter og endepunkter](docs/api-contracts.md)
@@ -136,8 +137,8 @@ Eksporten indeholder kildekode og dokumentation, men ikke `node_modules`, `.next
 ## Hvad er ikke implementeret endnu
 
 - Adgangskontrol (login) — skal besluttes, før betalte AI-nøgler tilføjes (se [docs/v3-architecture.md §8](docs/v3-architecture.md)).
-- Tilbud, Produktion, CRM og Dashboard bruger endnu ikke Job Center; opgavetyperne er registreret som planlagte.
-- Produktion & Levering, CRM og Dashboard har kun visuelle previews og kontraktspecifikationer. Deres API-endepunkter svarer `501 Not Implemented`.
+- Tilbudstekst, CRM og Dashboard bruger endnu ikke Job Center. Produktionens agentopgaver registreres i Job Center, men opgavetypen `production.agent_task` er planlagt (routeren blokerer med begrundelse).
+- CRM og Dashboard har kun visuelle previews og kontraktspecifikationer. Deres API-endepunkter svarer `501 Not Implemented`.
 - Brugerlogin og adgangsstyring.
 - Accept af tilbud og afsendelse til kunder. Status `accepted` findes i datamodellen, men bruges ikke.
 - Lokalt bruges JSON-filer; på Vercel bruges Supabase bag samme `CollectionStore`-interface (ét JSONB-dokument pr. entitet, ikke normaliserede tabeller).

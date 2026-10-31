@@ -34,7 +34,7 @@ export const MODULES: readonly ModuleDescriptor[] = [
     key: "production",
     name: "Produktion & Levering",
     route: "/production",
-    status: "pending",
+    status: "active",
     icon: "factory",
     description: "Udvikling, implementering, levering og vedligeholdelse af kundeløsninger.",
   },

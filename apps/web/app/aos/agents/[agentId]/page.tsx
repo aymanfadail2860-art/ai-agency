@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { getSettings } from "@agency/core/server";
 import { AgentDetail } from "@agency/aos";
 import { agentRegistry, getAgentStates } from "@agency/orchestrator/server";
+import { AGENT_ROLE_LABELS, phaseLabel } from "@agency/production";
+import { assignmentsForAgent } from "@agency/production/server";
 import { PageHeader } from "@agency/ui";
 
 export const metadata: Metadata = { title: "AOS — Agent" };
@@ -11,9 +13,10 @@ export const dynamic = "force-dynamic";
 
 export default async function AgentPage({ params }: { params: Promise<{ agentId: string }> }) {
   const { agentId } = await params;
-  const state = (await getAgentStates((await getSettings()).mode)).find((s) => s.agent.id === agentId);
+  const { mode } = await getSettings();
+  const state = (await getAgentStates(mode)).find((s) => s.agent.id === agentId);
   if (!state) notFound();
-  const versions = await agentRegistry.versions(agentId);
+  const [versions, assignments] = await Promise.all([agentRegistry.versions(agentId), assignmentsForAgent(agentId, mode)]);
   return (
     <>
       <PageHeader
@@ -25,7 +28,11 @@ export default async function AgentPage({ params }: { params: Promise<{ agentId:
           </Link>
         }
       />
-      <AgentDetail state={state} versions={versions} />
+      <AgentDetail
+        state={state}
+        versions={versions}
+        assignments={assignments.map((a) => ({ ...a, roleLabel: AGENT_ROLE_LABELS[a.role as keyof typeof AGENT_ROLE_LABELS] ?? a.role, phaseLabel: phaseLabel(a.phase) }))}
+      />
     </>
   );
 }

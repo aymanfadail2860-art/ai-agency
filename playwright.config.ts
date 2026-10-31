@@ -28,6 +28,8 @@ export default defineConfig({
       PLATFORM_DEFAULT_MODE: "demo",
       ANTHROPIC_API_KEY: "",
       BRAVE_SEARCH_API_KEY: "",
+      // Hele suiten kører fra én klient; grænsen i drift er uændret (60/min).
+      WRITE_RATE_LIMIT_PER_MINUTE: "600",
     },
   },
 });

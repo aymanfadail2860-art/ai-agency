@@ -50,7 +50,17 @@ const VERSION_STATUS: Record<AgentVersion["status"], { label: string; variant: "
   rejected: { label: "Afvist", variant: "destructive" },
 };
 
-export function AgentDetail({ state, versions }: { state: AgentState; versions: AgentVersion[] }) {
+export interface AgentAssignment {
+  projectId: string;
+  name: string;
+  customer: string;
+  roleLabel: string;
+  phaseLabel: string;
+  isDemo: boolean;
+  openTasks: number;
+}
+
+export function AgentDetail({ state, versions, assignments = [] }: { state: AgentState; versions: AgentVersion[]; assignments?: AgentAssignment[] }) {
   const router = useRouter();
   const { agent } = state;
   const v = agent.version;
@@ -243,6 +253,30 @@ export function AgentDetail({ state, versions }: { state: AgentState; versions: 
                 </Link>
               </p>
             )}
+          </CardContent>
+        </Card>
+        <Card data-testid="agent-assignments">
+          <CardHeader>
+            <CardTitle>Produktionsprojekter</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {assignments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Ikke tilknyttet nogen projekter.</p>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                {assignments.map((a) => (
+                  <li key={a.projectId} className="space-y-0.5">
+                    <Link href={`/production/projects/${a.projectId}`} className="font-medium text-accent hover:underline">
+                      {a.name}
+                    </Link>
+                    <p className="text-xs text-muted-foreground">
+                      {a.customer} · {a.roleLabel} · {a.phaseLabel} · {a.openTasks} åbne opgaver{a.isDemo ? " · demo" : ""}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-3 text-xs text-muted-foreground">Tilknytning er en planlagt ressource. Agentens status ovenfor bygger kun på job i Job Center.</p>
           </CardContent>
         </Card>
         <Card>

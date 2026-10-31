@@ -60,6 +60,11 @@ export function ApprovalList({ approvals }: { approvals: Approval[] }) {
                   Se opgaven
                 </Link>
               )}
+              {a.subject.ref?.module === "production" && (
+                <Link href={`/production/projects/${a.subject.ref.entityId}`} className="text-sm text-accent hover:underline" data-testid="approval-project-link">
+                  Se produktionsprojektet
+                </Link>
+              )}
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Input aria-label="Bemærkning (valgfri)" placeholder="Bemærkning (valgfri)" value={notes[a.id] ?? ""} onChange={(e) => setNotes({ ...notes, [a.id]: e.target.value })} maxLength={500} />
                 <Button onClick={() => decide(a.id, "approved")} disabled={busy !== null} data-testid="approval-approve">

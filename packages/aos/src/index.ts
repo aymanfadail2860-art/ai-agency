@@ -4,7 +4,7 @@ export { AgentOffice, type AgentOfficeProps } from "./components/agent-office";
 export { CommandCenterTiles } from "./components/command-center";
 export { JobTable, JobDetail } from "./components/jobs";
 export { ActivityFeed } from "./components/activity";
-export { AgentLibrary, AgentDetail } from "./components/agents";
+export { AgentLibrary, AgentDetail, type AgentAssignment } from "./components/agents";
 export { ApprovalList } from "./components/approvals";
 export { PerformanceView } from "./components/performance";
 export { IntegrationList } from "./components/integrations";

@@ -153,7 +153,9 @@ fordi der ikke findes credentials.
 1. Adgangskontrol (efter din beslutning).
 2. Live-test af Claude API og Claude Code-rutinen med rigtige credentials.
 3. Tilbud via Job Center: `quotes.proposal_text` med Nova. Priser forbliver deterministiske.
-4. Produktion & Levering: projekter, kravspecifikation og agentplanlægning med Forge og
-   Vega, deployment kun med godkendelse.
+4. ~~Produktion & Levering~~ **Gennemført i etape 2** ([production.md](production.md)): projekter,
+   faser med porte i AOS, agenttilknytning og Job Center-integration. Næste: implementér
+   `production.agent_task` (rutine-slot + resultatformat), så Forge/Link/Vega kan udføre
+   opgaver i Live Mode.
 5. CRM og Dashboard på de samme jobs, hændelser og omkostningsdata.
 6. Normaliserede tabeller og en egentlig jobkø, når belastningen kræver det.

@@ -156,6 +156,8 @@ export const JobSubjectSchema = z.object({
   reportId: z.string().optional(),
   researchJobId: z.string().optional(),
   quoteId: z.string().optional(),
+  /** Produktionsprojekt (Produktion & Levering). */
+  projectId: z.string().optional(),
   /** Kunde-/brandnavn til visning og omkostning pr. kunde. */
   customerName: z.string().max(200).optional(),
 });
@@ -266,7 +268,12 @@ export const ApprovalSchema = z.object({
   reasons: z.array(z.string().max(300)).max(10),
   status: z.enum(["pending", "approved", "rejected"]),
   mode: ModeSchema,
-  subject: z.object({ aiJobId: z.string().optional(), agentVersionId: z.string().optional() }),
+  subject: z.object({
+    aiJobId: z.string().optional(),
+    agentVersionId: z.string().optional(),
+    /** Generisk reference til en handling i et modul (fx en faseport i Produktion). */
+    ref: z.object({ module: z.string().max(40), entityId: z.string().max(80), action: z.string().max(60), detail: z.string().max(200).optional() }).optional(),
+  }),
   estimatedCostUsd: z.number().min(0).nullable(),
   decisionNote: z.string().max(500).nullable(),
   requestedAt: IsoDate,

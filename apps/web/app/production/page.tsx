@@ -1,14 +1,33 @@
 import type { Metadata } from "next";
-import { ProductionPreview } from "@agency/production";
-import { PageHeader, PendingBadge } from "@agency/ui";
+import Link from "next/link";
+import { getSettings } from "@agency/core/server";
+import { ProductionDashboardView, SERVICE_BASES } from "@agency/production";
+import { getDashboard } from "@agency/production/server";
+import { Button, ModeBadge, PageHeader } from "@agency/ui";
+import { Boxes } from "lucide-react";
 
 export const metadata: Metadata = { title: "Produktion & Levering" };
+export const dynamic = "force-dynamic";
 
-export default function Page() {
+export default async function ProductionPage() {
+  const { mode } = await getSettings();
+  const dashboard = await getDashboard(mode);
   return (
     <>
-      <PageHeader eyebrow="Modul 3" title="Produktion & Levering" badges={<PendingBadge />} description="Selvstændigt modul for hele processen fra accepteret tilbud til færdigleveret og vedligeholdt AI-løsning. Modtager opgaver fra Tilbud, CRM og andre moduler via dokumenterede API-kontrakter." />
-      <ProductionPreview />
+      <PageHeader
+        eyebrow="Modul 3"
+        title="Produktion & Levering"
+        badges={<ModeBadge mode={mode} />}
+        description="Fra accepteret tilbud til leveret og vedligeholdt AI-løsning. Agenter, agentjob og godkendelser kommer fra AOS."
+        actions={
+          <Link href="/production/service-factory">
+            <Button variant="outline" data-testid="open-service-factory">
+              <Boxes /> Service Factory
+            </Button>
+          </Link>
+        }
+      />
+      <ProductionDashboardView dashboard={dashboard} mode={mode} serviceNames={Object.fromEntries(SERVICE_BASES.map((b) => [b.key, b.name]))} />
     </>
   );
 }

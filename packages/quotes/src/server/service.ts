@@ -4,6 +4,7 @@ import {
   QuoteContentSchema,
   AnyResearchQuoteHandoffSchema,
   QuoteLineItemSchema,
+  type ProductionIntakeV2,
   type Quote,
   type QuoteIntakeResult,
   type QuoteLineItem,
@@ -244,4 +245,43 @@ export async function exportQuotePdf(quoteId: string, versionId?: string | null)
   await publishEvent({ type: "quote.pdf.exported", source: "quotes", mode: quote.mode, subject: { quoteId }, payload: { versionNumber: version.versionNumber } });
   const safeName = quoteRecipient(quote).displayName.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "");
   return { bytes, filename: `Tilbud-${quote.number}-v${version.versionNumber}-${safeName}${quote.mode === "demo" ? "-DEMO" : ""}.pdf` };
+}
+
+/**
+ * Kunden har accepteret tilbuddet (registreres af en medarbejder). Den aktuelle
+ * version låses som grundlag for produktionen. Idempotent.
+ */
+export async function acceptQuote(quoteId: string): Promise<Quote> {
+  const quote = await getQuote(quoteId);
+  if (quote.status === "accepted") return quote;
+  if (quote.status === "rejected") throw new AppError("conflict", "Tilbuddet er afvist og kan ikke accepteres.");
+  const updated = await quoteStore.update(quoteId, (q) => ({ ...q, status: "accepted" as const, updatedAt: nowIso() }));
+  await publishEvent({ type: "quote.accepted", source: "quotes", mode: quote.mode, subject: { quoteId, companyId: quote.company?.companyId }, payload: { versionId: quote.currentVersionId } });
+  return updated!;
+}
+
+/** Bygger kontrakten `quotes.production-intake@2` for et accepteret tilbud (brand-first, CVR valgfrit). */
+export function buildProductionIntake(quote: Quote): ProductionIntakeV2 {
+  if (quote.status !== "accepted") throw new AppError("conflict", "Kun accepterede tilbud kan overføres til produktion.");
+  const version = currentVersion(quote);
+  const totals = calculateQuoteTotals(version);
+  const recipient = quoteRecipient(quote);
+  return {
+    contract: "quotes.production-intake",
+    version: 2,
+    intakeId: `pin_${quote.id.slice(4)}_v${version.versionNumber}`,
+    sentBy: "quotes",
+    acceptedAt: quote.updatedAt,
+    mode: quote.mode,
+    customer: {
+      brandId: quote.brand?.brandId ?? null,
+      legalEntity: quote.company ? { companyId: quote.company.companyId, cvr: quote.company.cvr, name: quote.company.name } : null,
+      name: recipient.displayName,
+    },
+    quote: { quoteId: quote.id, quoteNumber: quote.number, versionId: version.id, versionNumber: version.versionNumber },
+    lineItems: version.lineItems,
+    totals: { implementationExclVat: totals.implementation.exclVat, monthlyExclVat: totals.monthly.exclVat, firstYearExclVat: totals.firstYear.exclVat },
+    specialTerms: version.specialTerms,
+    requestedStartDate: null,
+  };
 }

@@ -1,0 +1,58 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { AGENT_STATUS_LABELS } from "@agency/orchestrator";
+import { getAgentStates, getApproval } from "@agency/orchestrator/server";
+import { ProjectDetail, PriorityBadge, ProjectStatusBadge, SimulatedBadge, getServiceBaseDefinition } from "@agency/production";
+import { blockersFor, getFinance, getProject, jobsForProject, summarize } from "@agency/production/server";
+import { ModeBadge, PageHeader } from "@agency/ui";
+import { orNotFound } from "@/lib/page";
+import { ensureProductionWiring } from "@/lib/production";
+
+export const metadata: Metadata = { title: "Produktionsprojekt" };
+export const dynamic = "force-dynamic";
+
+export default async function ProjectPage({ params }: { params: Promise<{ projectId: string }> }) {
+  ensureProductionWiring();
+  const { projectId } = await params;
+  const bundle = await orNotFound(getProject(projectId));
+  const { project, tasks } = bundle;
+  const [finance, jobs, states, approval] = await Promise.all([
+    getFinance(bundle),
+    jobsForProject(project),
+    getAgentStates(project.mode),
+    project.pendingGate ? getApproval(project.pendingGate.approvalId).catch(() => null) : Promise.resolve(null),
+  ]);
+  const base = getServiceBaseDefinition(project.serviceBaseKey);
+  return (
+    <>
+      <PageHeader
+        eyebrow={`Produktion · ${project.customer.name}`}
+        title={project.name}
+        badges={
+          <>
+            <ModeBadge mode={project.mode} />
+            <ProjectStatusBadge status={project.status} />
+            <PriorityBadge priority={project.priority} />
+            {project.isDemo && <SimulatedBadge label="Demoprojekt" />}
+          </>
+        }
+        description={
+          <Link href="/production" className="text-accent hover:underline">
+            ← Produktionsoversigt
+          </Link>
+        }
+      />
+      <ProjectDetail
+        bundle={bundle}
+        finance={finance}
+        jobs={jobs}
+        agents={states.map((s) => ({ id: s.agent.id, key: s.agent.key, name: s.agent.name, role: s.agent.role, color: s.agent.color, enabled: s.agent.enabled, status: s.status, statusLabel: AGENT_STATUS_LABELS[s.status] }))}
+        serviceBase={base ? { key: base.key, name: base.name, version: base.version } : null}
+        pendingApproval={approval && approval.status === "pending" ? { id: approval.id, title: approval.title, reasons: approval.reasons } : null}
+        blockers={blockersFor(project, tasks)}
+        mode={project.mode}
+        overdue={summarize(project, tasks).overdue}
+      />
+    </>
+  );
+}

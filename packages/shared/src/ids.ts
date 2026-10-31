@@ -21,6 +21,14 @@ export const ID_PREFIXES = {
   handoff: "hnd",
   event: "evt",
   aiJob: "aij",
+  productionProject: "prj",
+  productionTask: "ptk",
+  deliverable: "dlv",
+  testCase: "ptc",
+  projectFile: "pfl",
+  projectEvent: "pev",
+  costEntry: "pco",
+  productionIntake: "pin",
   approval: "apr",
 } as const;
 

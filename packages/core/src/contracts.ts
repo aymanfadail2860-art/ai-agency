@@ -126,6 +126,22 @@ export const ProductionIntakeSchema = z.object({
 });
 export type ProductionIntake = z.infer<typeof ProductionIntakeSchema>;
 
+/**
+ * V3: brand-first intake — tilbud kan være uden bekræftet CVR (som handoff v2).
+ * Kunden refereres via brand og evt. juridisk enhed; kundedata kopieres ikke.
+ */
+export const ProductionIntakeV2Schema = ProductionIntakeSchema.omit({ version: true, company: true }).extend({
+  version: z.literal(2),
+  customer: z.object({
+    brandId: z.string().startsWith("brd_").nullable(),
+    legalEntity: CompanyRefSchema.nullable(),
+    name: z.string().min(1),
+  }),
+});
+export type ProductionIntakeV2 = z.infer<typeof ProductionIntakeV2Schema>;
+export const AnyProductionIntakeSchema = z.discriminatedUnion("version", [ProductionIntakeSchema, ProductionIntakeV2Schema]);
+export type AnyProductionIntake = z.infer<typeof AnyProductionIntakeSchema>;
+
 /* -------------------------------------------------------------------------- */
 /* FREMTIDIG: Tilbud/Research → CRM                                           */
 /* -------------------------------------------------------------------------- */
@@ -182,12 +198,21 @@ export const CONTRACT_REGISTRY = [
   },
   {
     name: "quotes.production-intake",
+    version: 2,
+    from: "quotes",
+    to: "production",
+    status: "active",
+    endpoint: "POST /api/production/intake",
+    description: "V3: Accepteret tilbud → produktionsprojekt (brand-first, CVR valgfrit). Idempotent pr. intakeId.",
+  },
+  {
+    name: "quotes.production-intake",
     version: 1,
     from: "quotes",
     to: "production",
-    status: "planned",
-    endpoint: "POST /api/production/intake (svarer 501 i V1)",
-    description: "Overfører et accepteret tilbud til Produktion & Levering, som opretter et projekt.",
+    status: "active",
+    endpoint: "POST /api/production/intake",
+    description: "Accepteret tilbud med bekræftet CVR → produktionsprojekt.",
   },
   {
     name: "crm.activity-sync",

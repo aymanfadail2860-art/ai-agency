@@ -1,18 +1,12 @@
-import { json } from "@/lib/http";
+import { createFromIntake } from "@agency/production/server";
+import { json, readJson, route } from "@/lib/http";
+import { ensureProductionWiring } from "@/lib/production";
 
 export const dynamic = "force-dynamic";
 
-/** Produktion & Levering — afventer. Kontrakten er dokumenteret, men ikke implementeret i V1. */
-function notImplemented() {
-  return json(
-    {
-      error: { code: "not_implemented", message: "Afventer — modulet udvikles i en kommende version." },
-      contract: "quotes.production-intake@1",
-      documentation: "docs/api-contracts.md",
-    },
-    501,
-  );
-}
-
-export const GET = notImplemented;
-export const POST = notImplemented;
+/** Kontrakt `quotes.production-intake@1/@2`: accepteret tilbud → produktionsprojekt. Idempotent pr. intakeId. */
+export const POST = route(async (req) => {
+  ensureProductionWiring();
+  const { project, created } = await createFromIntake(await readJson(req));
+  return json({ projectId: project.id, created }, created ? 201 : 200);
+});

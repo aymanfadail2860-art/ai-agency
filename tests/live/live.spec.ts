@@ -32,7 +32,8 @@ test("API: lagring, integrationer, validering og sikkerhed", async ({ request })
   expect((await request.post("/api/research/discover", { data: { type: "url", value: "ikke en url" } })).status()).toBe(400);
   expect((await request.post("/api/research/discover", { data: { type: "url", value: "http://169.254.169.254/" } })).status()).toBe(409);
   expect((await request.post("/api/quotes/intake", { data: { contract: "research.quote-handoff", version: 2, services: [] } })).status()).toBe(400);
-  for (const p of ["/api/production/intake", "/api/crm/activities", "/api/dashboard/metrics"]) expect((await request.post(p, { data: {} })).status()).toBe(501);
+  expect((await request.post("/api/production/intake", { data: {} })).status()).toBe(400);
+  for (const p of ["/api/crm/activities", "/api/dashboard/metrics"]) expect((await request.post(p, { data: {} })).status()).toBe(501);
   expect((await request.put("/api/settings", { data: { mode: "live" }, headers: { origin: "https://evil.example" } })).status()).toBe(403);
   results.apiChecks = "ok";
 });
@@ -202,7 +203,6 @@ test("Live Mode: reel URL-research (kun når LIVE_RESEARCH_URL er sat)", async (
 
 test("Afventende moduler og mobil", async ({ page }) => {
   for (const [nav, title] of [
-    ["nav-production", "Produktion & Levering"],
     ["nav-crm", "CRM"],
     ["nav-dashboard", "Dashboard"],
   ] as const) {

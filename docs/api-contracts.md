@@ -68,7 +68,11 @@ Orkestrering i UI: `POST /api/research/reports/:id/handoff`. Research bygger kon
 
 ---
 
-## 2. `quotes.production-intake@1`: PLANLAGT (ikke implementeret)
+## 2. `quotes.production-intake@2` og `@1`: AKTIV (V3, etape 2)
+
+V2 er brand-first og tillader tilbud uden CVR: `company` erstattes af `customer: { brandId | null, legalEntity: CompanyRef | null, name }`. Resten er som v1 nedenfor. Endpoint: `POST /api/production/intake` → `201 { projectId, created: true }` / `200` ved gentagelse (idempotent pr. `intakeId`). Tilbud bygger kontrakten med `buildProductionIntake(quote)` ved kundens accept (`POST /api/quotes/:id/accept`). Se [production.md](production.md).
+
+### v1 (oprindelig specifikation)
 
 **Tilbud → Produktion & Levering** (og senere **CRM → Produktion**, fx ved genkøb). Sendes, når et tilbud accepteres. Produktion opretter et `ProductionProject` og vælger et produktionsflow pr. service (`ProductionFlowTemplate` i `@agency/production`).
 
@@ -91,7 +95,7 @@ Endepunkt: `POST /api/production/intake`. Svarer **501** i V1.
 }
 ```
 
-Forventet svar (fremtid): `201 { projectId: "prj_…", flowTemplateIds: [...] }`.
+Svar: `201 { projectId: "prj_…", created: true }`.
 
 ---
 

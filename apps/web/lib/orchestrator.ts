@@ -5,6 +5,7 @@ import { getJob as getAiJob, registerExecutor, registerResultSchema, submitJob, 
 import { DeepResearchResultSchema } from "@agency/research";
 import { RESEARCH_STEPS, getBrandOverview, getJob as getResearchJob, legacyBrandIdForCompany, startResearch, StartResearchSchema } from "@agency/research/server";
 import { AppError, type AppErrorCode } from "@agency/shared";
+import { ensureProductionWiring } from "./production";
 
 /**
  * KOMPOSITION: modulerne ↔ den fælles AI-infrastruktur
@@ -21,6 +22,7 @@ const STEP_STATUS: Record<string, string> = { done: "færdig", failed: "fejlede"
 export function ensureExecutors(): void {
   if (registered) return;
   registered = true;
+  ensureProductionWiring();
 
   registerExecutor("research.brand_analysis", async (job, ctx) => {
     const input = z.object({ brandId: z.string(), websiteUrl: z.string().nullable().optional() }).parse(job.input);

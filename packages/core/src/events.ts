@@ -26,6 +26,9 @@ export const EVENT_TYPES = [
   "quote.pdf.exported",
   "catalog.updated",
   "settings.updated",
+  "quote.accepted",
+  "production.project.created",
+  "production.phase.changed",
   "ai.job.created",
   "ai.job.completed",
   "ai.job.failed",
@@ -46,6 +49,7 @@ export const DomainEventSchema = z.object({
     quoteId: z.string().optional(),
     jobId: z.string().optional(),
     aiJobId: z.string().optional(),
+    projectId: z.string().optional(),
   }),
   payload: z.record(z.unknown()),
 });

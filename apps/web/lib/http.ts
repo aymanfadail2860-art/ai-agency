@@ -28,8 +28,10 @@ type Handler<C> = (req: NextRequest, ctx: C) => Promise<Response> | Response;
  * Misbrugsbeskyttelse for den offentlige demo (ingen login i V1): alle
  * muterende kald begrænses pr. klient og samlet for hele platformen.
  */
+const perMinute = Number(process.env.WRITE_RATE_LIMIT_PER_MINUTE);
 export const WRITE_LIMITS = {
-  perClient: { limit: 60, windowMs: 60_000 },
+  // Standard 60/min pr. klient; kan hæves via WRITE_RATE_LIMIT_PER_MINUTE (fx i e2e-testserveren).
+  perClient: { limit: Number.isFinite(perMinute) && perMinute > 0 ? perMinute : 60, windowMs: 60_000 },
   global: { limit: 3000, windowMs: 60 * 60_000 },
 } as const;
 

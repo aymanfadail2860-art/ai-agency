@@ -169,7 +169,6 @@ test("Scenarie D: flere juridiske enheder vælges ikke automatisk", async ({ pag
 
 test("Afventende moduler", async ({ page }) => {
   for (const [nav, title] of [
-    ["nav-production", "Produktion & Levering"],
     ["nav-crm", "CRM"],
     ["nav-dashboard", "Dashboard"],
   ] as const) {
@@ -183,7 +182,9 @@ test("Afventende moduler", async ({ page }) => {
 test("API-kontrakter og validering", async ({ request }) => {
   const bad = await request.post("/api/quotes/intake", { data: { contract: "research.quote-handoff", version: 2, services: [] } });
   expect(bad.status()).toBe(400);
-  for (const path of ["/api/production/intake", "/api/crm/activities", "/api/dashboard/metrics"]) {
+  // Produktion er aktiv (V3): intake validerer kontrakten.
+  expect((await request.post("/api/production/intake", { data: {} })).status()).toBe(400);
+  for (const path of ["/api/crm/activities", "/api/dashboard/metrics"]) {
     expect((await request.post(path, { data: {} })).status()).toBe(501);
   }
   expect((await request.post("/api/research/discover", { data: { type: "url", value: "ikke en url" } })).status()).toBe(400);

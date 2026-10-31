@@ -78,7 +78,7 @@ Indstillinger viser, om platformen bruger "Supabase (database)" eller "lokale JS
 ## Test
 
 ```bash
-pnpm test        # Vitest: 105 enhedstests (router, Job Center, callbacks, agentversioner, brand-first, scoring, priser, kontrakter, SSRF, budgetter …)
+pnpm test        # Vitest: 106 enhedstests (router, Job Center, callbacks, agentversioner, brand-first, scoring, priser, kontrakter, SSRF, budgetter …)
 pnpm test:e2e    # Playwright: scenarierne A-F + AOS (Job Center, Agent Office, godkendelse af agentversion, deaktiveret agent, integrationer)
 LIVE_BASE_URL=https://… pnpm exec playwright test -c playwright.live.config.ts   # live-test mod en deployet instans
 pnpm typecheck   # TypeScript i alle pakker

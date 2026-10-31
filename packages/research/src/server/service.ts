@@ -28,7 +28,7 @@ import { assertSafeUrl, getCvrProvider } from "@agency/integrations";
 import { AppError, newId, nowIso, validateCvr } from "@agency/shared";
 import { DEMO_DATASETS, DEMO_EXAMPLES } from "./demo-data";
 import { demoDiscoverySources, discoverByCvr, discoverByUrl, liveDiscoverySources, normalizeResearchUrl, type DiscoveryResult } from "./discovery";
-import { buildRelationSnapshot, demoDataSources, liveDataSources, newJob, runBrandResearch } from "./pipeline";
+import { buildRelationSnapshot, demoDataSources, liveDataSources, newJob, runBrandResearch, type ResearchObserver } from "./pipeline";
 import { jobStore, reportStore } from "./store";
 
 /**
@@ -245,6 +245,12 @@ export interface StartResearchOptions {
    * give `after` fra next/server, så funktionen holdes i live til jobbet er færdigt.
    */
   defer?: (task: () => Promise<void>) => void;
+  /** Routerens beslutning: må Claude bruges i analysetrinnet? Standard: når nøglen findes. */
+  useAi?: boolean;
+  /** Vises i rapporten, når AI er fravalgt af routeren. */
+  aiUnavailableReason?: string;
+  /** Platformens Job Center følger trin, omkostninger og resultat. */
+  observer?: ResearchObserver;
 }
 
 export async function startResearch(input: z.infer<typeof StartResearchSchema>, options: StartResearchOptions = {}): Promise<ResearchJob> {
@@ -276,18 +282,33 @@ export async function startResearch(input: z.infer<typeof StartResearchSchema>, 
   const confirmedLegalEntities = overview.relations.filter((r) => r.relation.status === "confirmed" && r.legalEntity).map((r) => r.legalEntity!) ;
   const relationSnapshot = await buildRelationSnapshot(overview.relations.filter((r) => r.legalEntity).map((r) => ({ status: r.relation.status, legalEntity: r.legalEntity! })));
   const ds = brand.mode === "demo" ? demoDataSources(websites.map((w) => w.url)) : liveDataSources();
+  if (options.useAi === false && ds.useAi) {
+    ds.useAi = false;
+    ds.aiUnavailableReason = options.aiUnavailableReason;
+  }
+  const { observer } = options;
+  // Kun rigtige (betalte) søgninger tælles som omkostning — Demo Mode bruger fiktive resultater.
+  if (observer?.onSearch && ds.search && !ds.isDemo) {
+    const search = ds.search;
+    ds.search = async (query, kind) => {
+      await observer.onSearch?.();
+      return search(query, kind);
+    };
+  }
   const job = await jobStore.upsert(newJob(brand, websiteUrl, confirmedLegalEntities[0]?.id ?? null));
   await brandRegistry.touch(brand.id);
   await publishEvent({ type: "research.job.started", source: "research", mode: brand.mode, subject: { jobId: job.id }, payload: { brandId: brand.id } });
 
   const task = async () => {
     try {
-      await runBrandResearch(job, { brand, websites, confirmedLegalEntities, relationSnapshot }, ds);
+      const report = await runBrandResearch(job, { brand, websites, confirmedLegalEntities, relationSnapshot }, ds, observer);
+      await observer?.onCompleted?.(report);
     } catch (err) {
       console.error("[research] job fejlede", err);
       const message = err instanceof AppError ? err.message : "Uventet fejl under research.";
       await jobStore.update(job.id, (j) => ({ ...j, status: "failed", error: message, finishedAt: nowIso(), updatedAt: nowIso() }));
       await publishEvent({ type: "research.failed", source: "research", mode: brand.mode, subject: { jobId: job.id }, payload: { brandId: brand.id, message } });
+      await observer?.onFailed?.(message);
     }
   };
   if (options.defer) options.defer(task);

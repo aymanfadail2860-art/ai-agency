@@ -7,3 +7,4 @@ export * from "./http/robots";
 export { httpRequest } from "./http/client";
 export * from "./ai/anthropic";
 export * from "./search/brave";
+export * from "./claude-code/routines";

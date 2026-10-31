@@ -124,6 +124,34 @@ test("Demo: flere brands under samme CVR og flere juridiske enheder", async ({ p
   await shot(page, "04-flere-juridiske-enheder");
 });
 
+test("AOS (V3): research registreres i Job Center; agenter, kontor og integrationer viser reelle data", async ({ page, request }) => {
+  const overview = await (await request.get("/api/aos/overview")).json();
+  expect(overview.agents.map((a: { agent: { name: string } }) => a.agent.name)).toEqual(["Atlas", "Scout", "Nova", "Forge", "Vega", "Link", "Echo", "Pulse"]);
+  const jobs = (await (await request.get("/api/aos/jobs?taskType=research.brand_analysis")).json()) as Array<{ status: string; engine: string; timeline: unknown[] }>;
+  const done = jobs.find((j) => j.status === "succeeded");
+  expect(done?.engine).toBe("internal");
+  results.aos = {
+    agents: overview.agents.length,
+    working: overview.stats.agents.working,
+    researchJobs: jobs.length,
+    succeeded: overview.stats.jobs.succeeded,
+    timelineEvents: done?.timeline.length,
+  };
+  const integrations = (await (await request.get("/api/aos/integrations")).json()) as Array<{ key: string; state: string }>;
+  results.aosIntegrations = Object.fromEntries(integrations.filter((i) => i.state !== "planned").map((i) => [i.key, i.state]));
+  expect(JSON.stringify(integrations)).not.toMatch(/sk-ant-|sb_secret_|eyJhbGci/);
+  const { brands } = await (await request.get("/api/research/brands")).json();
+  const deep = await (await request.post(`/api/research/brands/${brands[0].brand.id}/deep-research`, { data: {} })).json();
+  expect(deep.status).toBe("blocked");
+  results.deepResearchDemo = deep.error.message;
+  await page.goto("/aos/office");
+  await expect(page.getByTestId("office-agent-scout")).toBeVisible();
+  await expect(page.locator('[data-testid^="office-agent-"][data-agent-status="working"]')).toHaveCount(0);
+  await shot(page, "07-aos-office");
+  await page.goto("/aos");
+  await shot(page, "08-aos-command-center");
+});
+
 test("Live Mode: reel URL-research (kun når LIVE_RESEARCH_URL er sat)", async ({ page, request }) => {
   const target = process.env.LIVE_RESEARCH_URL;
   test.skip(!target, "LIVE_RESEARCH_URL ikke sat");
@@ -136,6 +164,8 @@ test("Live Mode: reel URL-research (kun når LIVE_RESEARCH_URL er sat)", async (
     const created = await (await request.post("/api/research/brands", { data: { type: "url", name: d.brandCandidates[0].name, websiteUrl: d.website.url, suggestedLegalEntityIds: (d.legalEntities ?? []).map((e: { company: { id: string } }) => e.company.id) } })).json();
     const brandId = created.brand.id;
     let job = await (await request.post("/api/research/jobs", { data: { brandId } })).json();
+    results.liveRouting = job.aiJob;
+    const aiJobId = job.aiJob.id;
     for (let i = 0; i < 60 && job.status !== "completed" && job.status !== "failed"; i++) {
       await new Promise((r) => setTimeout(r, 1500));
       job = await (await request.get(`/api/research/jobs/${job.id}`)).json();
@@ -156,6 +186,9 @@ test("Live Mode: reel URL-research (kun når LIVE_RESEARCH_URL er sat)", async (
       sources: report.sources.length,
     };
     expect(report.researchBasis).toBe("live");
+    const aiJob = await (await request.get(`/api/aos/jobs/${aiJobId}`)).json();
+    results.liveAiJob = { status: aiJob.status, engine: aiJob.engine, fallback: aiJob.routing.fallback, trace: aiJob.routing.trace, cost: aiJob.cost, events: aiJob.timeline.length };
+    expect(aiJob.status).toBe("succeeded");
     expect(report.sources.every((s: { isDemo: boolean }) => !s.isDemo)).toBe(true);
     await page.goto(`/research/reports/${job.reportId}`);
     await expect(page.getByTestId("research-basis")).toContainText("Reel research");

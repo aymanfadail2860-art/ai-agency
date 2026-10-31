@@ -1,16 +1,19 @@
-# AI Agency Platform — V2
+# AI Agency Platform — V3
 
-Et modulært operativsystem til et AI-bureau: fra research og salg til produktion, levering, kundestyring og rapportering.
+Bureauets **interne arbejdsplatform**: research, salg, produktion, levering, kundestyring, rapportering og koordinering af specialiserede AI-agenter. Det er ikke en SaaS; kunderne får de løsninger, vi bygger, ikke adgang til platformen.
 
-**V1 indeholder fem selvstændige moduler:**
+**Seks selvstændige moduler, der deler én AI-infrastruktur:**
 
-| # | Modul | Route | Status i V1 |
+| # | Modul | Route | Status |
 |---|---|---|---|
 | 1 | Research | `/research` | **Aktiv (V2)**: brand-first research via URL eller CVR, Website Intelligence, websøgning, konkurrenter, Claude-analyse, 5-10 serviceanbefalinger, kommerciel rapport |
 | 2 | Tilbud | `/quotes` | **Aktiv (V2)**: tilbud til brand med eller uden CVR, engangsydelser, forudsætninger og forbehold, AI-tekst, versioner, PDF |
 | 3 | Produktion & Levering | `/production` | Afventer: visuelt preview + dokumenteret kontrakt |
 | 4 | CRM | `/crm` | Afventer: visuelt preview + dokumenteret kontrakt |
 | 5 | Dashboard | `/dashboard` | Afventer: visuelt preview (demo-markeret) + dokumenteret kontrakt |
+| 6 | AOS — Agent Operating System | `/aos` | **Aktiv (V3)**: Command Center, isometrisk Agent Office, Agent Library (versioneret), Job Center, Live Activity, Godkendelser, Performance & Cost, Integration Manager |
+
+**Fælles AI-infrastruktur (V3, `@agency/orchestrator`):** alle opgaver går gennem Job Center. En regelbaseret, forklarlig router vælger motor: Claude Code-rutine (abonnement), Claude API (betalt) eller intern software uden AI. Godkendelser, omkostninger og agenternes status registreres samlet. Se [docs/v3-architecture.md](docs/v3-architecture.md) og [docs/claude-code-integration.md](docs/claude-code-integration.md).
 
 Derudover findes **Indstillinger** (`/settings`) med Demo/Live-tilstand, integrationsstatus, modul- og kontraktoversigt og hændelseslog.
 
@@ -52,7 +55,9 @@ Skift til Live Mode under **Indstillinger**, og konfigurér integrationer i `app
 | Websøgning: nyheder, job, anmeldelser, konkurrenter | `BRAVE_SEARCH_API_KEY` | Trinnet springes over og noteres som begrænsning |
 | Hentning af hjemmeside | `RESEARCH_WEBSITE_FETCH` (standard `true`) | — |
 
-Omkostningsgrænser (`AI_DAILY_BUDGET_USD`, `SEARCH_DAILY_LIMIT`, `RESEARCH_DAILY_LIMIT`, `CVR_DAILY_LIMIT`, `RESEARCH_MAX_PAGES`) og dagens forbrug vises under Indstillinger.
+| Claude Code-rutine (dyb research, V3) | `CLAUDE_CODE_ROUTINE_RESEARCH_ID`, `CLAUDE_CODE_ROUTINE_RESEARCH_TOKEN`, `AGENCY_PUBLIC_URL` — opsætning i [routines/ai-agency-job.md](routines/ai-agency-job.md) | Dyb research vises som ikke tilgængelig med begrundelse |
+
+Omkostningsgrænser (`AI_DAILY_BUDGET_USD`, `AI_APPROVAL_THRESHOLD_USD`, `CLAUDE_CODE_DAILY_LIMIT`, `SEARCH_DAILY_LIMIT`, `RESEARCH_DAILY_LIMIT`, `CVR_DAILY_LIMIT`, `RESEARCH_MAX_PAGES`) og dagens forbrug vises under Indstillinger. Omkostninger pr. opgave, agent, kunde og motor vises i AOS → Performance & Cost.
 
 I Live Mode bruges **aldrig** fiktive data som fallback. Manglende integrationer vises i rapportens "Datagrundlag og begrænsninger" og under Indstillinger.
 
@@ -73,8 +78,8 @@ Indstillinger viser, om platformen bruger "Supabase (database)" eller "lokale JS
 ## Test
 
 ```bash
-pnpm test        # Vitest: 87 enhedstests (brand-first, discovery, scoring, priser, kontrakter, SSRF, CVR-mapping, budgetter, PDF …)
-pnpm test:e2e    # Playwright: bygger appen og kører scenarierne A-F (CVR, URL, flere brands, flere juridiske enheder, manglende integration, persistens)
+pnpm test        # Vitest: 105 enhedstests (router, Job Center, callbacks, agentversioner, brand-first, scoring, priser, kontrakter, SSRF, budgetter …)
+pnpm test:e2e    # Playwright: scenarierne A-F + AOS (Job Center, Agent Office, godkendelse af agentversion, deaktiveret agent, integrationer)
 LIVE_BASE_URL=https://… pnpm exec playwright test -c playwright.live.config.ts   # live-test mod en deployet instans
 pnpm typecheck   # TypeScript i alle pakker
 ```
@@ -98,8 +103,12 @@ ai-agency/
 │   ├── quotes/               Modul 2 — komponenter, prisberegning + /server (tilbud, katalog, PDF)
 │   ├── production/           Modul 3 — preview + fremtidige kontrakter (ingen forretningslogik)
 │   ├── crm/                  Modul 4 — preview + fremtidige kontrakter
-│   └── dashboard/            Modul 5 — preview + fremtidige kontrakter
-├── docs/                     arkitektur, API-kontrakter, sikkerhed, næste fase
+│   ├── dashboard/            Modul 5 — preview + fremtidige kontrakter
+│   ├── orchestrator/         FÆLLES AI-INFRASTRUKTUR: Job Center, Execution Router, Agent Manager,
+│   │                         godkendelser, omkostninger, Integration Manager (+ /server)
+│   └── aos/                  Modul 6 — AOS-komponenter (Command Center, Agent Office, …)
+├── routines/                 protokol for Claude Code-rutiner (versionsstyret, kontouafhængig)
+├── docs/                     arkitektur (V2 + V3), Claude Code-integration, API-kontrakter, sikkerhed, næste fase
 ├── tests/e2e/                Playwright-accepttests
 ├── scripts/export-zip.sh     ZIP-eksport uden nøgler/afhængigheder
 └── .env.example
@@ -109,6 +118,8 @@ Hvert forretningsmodul har en klientsikker indgang (`@agency/<modul>`: komponent
 
 ## Dokumentation
 
+- [V3-arkitektur: hybrid AI-motor, orchestrator og AOS](docs/v3-architecture.md)
+- [Claude Code som motor — verificerede muligheder og begrænsninger](docs/claude-code-integration.md)
 - [Arkitektur og modulgrænser](docs/architecture.md)
 - [API-kontrakter og endepunkter](docs/api-contracts.md)
 - [Sikkerhed, og hvad der mangler før produktion](docs/security.md)
@@ -122,8 +133,10 @@ pnpm export:zip   # → exports/ai-agency-platform-<dato>.zip
 
 Eksporten indeholder kildekode og dokumentation, men ikke `node_modules`, `.next`, `.data`, `.env*.local` eller andre ignorerede filer. Scriptet afbryder, hvis en fil ligner en API-nøgle.
 
-## Hvad er ikke implementeret i V1
+## Hvad er ikke implementeret endnu
 
+- Adgangskontrol (login) — skal besluttes, før betalte AI-nøgler tilføjes (se [docs/v3-architecture.md §8](docs/v3-architecture.md)).
+- Tilbud, Produktion, CRM og Dashboard bruger endnu ikke Job Center; opgavetyperne er registreret som planlagte.
 - Produktion & Levering, CRM og Dashboard har kun visuelle previews og kontraktspecifikationer. Deres API-endepunkter svarer `501 Not Implemented`.
 - Brugerlogin og adgangsstyring.
 - Accept af tilbud og afsendelse til kunder. Status `accepted` findes i datamodellen, men bruges ikke.

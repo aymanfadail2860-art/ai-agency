@@ -66,6 +66,17 @@ export interface ResearchDataSources {
   /** null = websøgning ikke tilgængelig. */
   search: ((query: string, kind: "jobs" | "reviews" | "news" | "social" | "competitors") => Promise<SearchResult[]>) | null;
   useAi: boolean;
+  /** Begrundelse, når AI bevidst er fravalgt (fx politik NO_AI eller budget) — vises i rapporten. */
+  aiUnavailableReason?: string;
+}
+
+/** Valgfri observatør — bruges af platformens Job Center uden at Research kender det. */
+export interface ResearchObserver {
+  onStep?: (key: string, status: ResearchStep["status"], detail: string | null) => void | Promise<void>;
+  onAiUsage?: (usage: { model: string; inputTokens: number; outputTokens: number; costUsd: number }) => void | Promise<void>;
+  onSearch?: () => void | Promise<void>;
+  onCompleted?: (report: ResearchReport) => void | Promise<void>;
+  onFailed?: (message: string) => void | Promise<void>;
 }
 
 export function liveDataSources(): ResearchDataSources {
@@ -179,15 +190,19 @@ function maxPages(): number {
   return Number.isFinite(v) && v >= 1 && v <= 15 ? Math.floor(v) : 8;
 }
 
-export async function runBrandResearch(job: ResearchJob, input: BrandResearchInput, ds: ResearchDataSources): Promise<ResearchReport> {
+export async function runBrandResearch(job: ResearchJob, input: BrandResearchInput, ds: ResearchDataSources, observer?: ResearchObserver): Promise<ResearchReport> {
   const { brand } = input;
+  const step = async (key: string, status: ResearchStep["status"], detail: string | null = null) => {
+    await setStep(job.id, key, status, detail);
+    await observer?.onStep?.(key, status, detail);
+  };
   await jobStore.update(job.id, (j) => ({ ...j, status: "running", startedAt: nowIso(), updatedAt: nowIso() }));
   const sources: ResearchSource[] = [];
   const limitations: string[] = [];
   if (ds.isDemo) limitations.push("Demo Mode: alle kilder, virksomheder og konkurrenter er fiktive.");
 
   // 1. Identitet — registerdata kun for bekræftede juridiske enheder
-  await setStep(job.id, "identity", "running");
+  await step("identity", "running");
   const registrySources = new Map<string, ResearchSource>();
   for (const entity of input.confirmedLegalEntities) {
     const src = registrySource(entity);
@@ -202,7 +217,7 @@ export async function runBrandResearch(job: ResearchJob, input: BrandResearchInp
   }
   if (input.confirmedLegalEntities.length > 1) limitations.push("Flere juridiske enheder er bekræftet; den første bruges som primær i analysen.");
   const snapshot = input.relationSnapshot.map((r) => ({ ...r, sourceId: registrySources.get(r.legalEntityId)?.id ?? null }));
-  await setStep(job.id, "identity", "done", input.confirmedLegalEntities.length > 0 ? `${input.confirmedLegalEntities.map((e) => `CVR ${e.cvr}`).join(", ")} bekræftet` : "Brand uden bekræftet CVR");
+  await step("identity", "done", input.confirmedLegalEntities.length > 0 ? `${input.confirmedLegalEntities.map((e) => `CVR ${e.cvr}`).join(", ")} bekræftet` : "Brand uden bekræftet CVR");
 
   // 2. Website Intelligence
   const pages: Array<PageWithSource & { pageType: PageType }> = [];
@@ -211,14 +226,14 @@ export async function runBrandResearch(job: ResearchJob, input: BrandResearchInp
   const websiteUrl = job.websiteUrl ?? primarySite?.url ?? primaryLegal?.contact.website ?? null;
   let websiteAttempted = false;
   if (!websiteUrl) {
-    await setStep(job.id, "website", "skipped", "Ingen hjemmeside kendt");
+    await step("website", "skipped", "Ingen hjemmeside kendt");
     limitations.push("Ingen hjemmeside er kendt for brandet — digitale funktioner er ukendte.");
   } else if (!ds.isDemo && !integrationConfig.websiteFetchEnabled()) {
-    await setStep(job.id, "website", "skipped", "Webhentning er deaktiveret");
+    await step("website", "skipped", "Webhentning er deaktiveret");
     limitations.push("Hentning af hjemmesider er deaktiveret (RESEARCH_WEBSITE_FETCH=false).");
   } else {
     websiteAttempted = true;
-    await setStep(job.id, "website", "running", websiteUrl);
+    await step("website", "running", websiteUrl);
     try {
       const home = await ds.fetchPage(websiteUrl);
       const homePage = parseHtmlPage(home.body, home.finalUrl);
@@ -236,12 +251,12 @@ export async function runBrandResearch(job: ResearchJob, input: BrandResearchInp
           blocked.push({ url, reason: isAppError(err) ? err.message : "ukendt fejl" });
         }
       }
-      await setStep(job.id, "website", "done", `${pages.length} side(r) analyseret${blocked.length ? ` · ${blocked.length} kunne ikke hentes` : ""}`);
+      await step("website", "done", `${pages.length} side(r) analyseret${blocked.length ? ` · ${blocked.length} kunne ikke hentes` : ""}`);
     } catch (err) {
       const message = isAppError(err) ? err.message : "ukendt fejl";
       blocked.push({ url: websiteUrl, reason: message });
       limitations.push(`Hjemmesiden (${websiteUrl}) kunne ikke hentes: ${message}`);
-      await setStep(job.id, "website", "failed", message);
+      await step("website", "failed", message);
     }
     if (blocked.length > 0 && pages.length > 0) limitations.push(`${blocked.length} underside(r) kunne ikke hentes (fx pga. robots.txt eller timeout).`);
   }
@@ -251,10 +266,10 @@ export async function runBrandResearch(job: ResearchJob, input: BrandResearchInp
   const competitorCandidates: SearchResult[] = [];
   const cores = Array.from(new Set([nameCore(brand.name), ...input.confirmedLegalEntities.map((e) => nameCore(e.name))])).filter(Boolean);
   if (!ds.search) {
-    await setStep(job.id, "search", "skipped", "Websøgning ikke konfigureret");
+    await step("search", "skipped", "Websøgning ikke konfigureret");
     limitations.push("Websøgning er ikke konfigureret (BRAVE_SEARCH_API_KEY): anmeldelser, stillingsopslag, nyheder, sociale profiler og konkurrenter er ikke undersøgt eksternt.");
   } else {
-    await setStep(job.id, "search", "running");
+    await step("search", "running");
     const queries: Array<{ kind: "jobs" | "reviews" | "news" | "social"; query: string }> = [
       { kind: "reviews", query: `"${brand.name}" anmeldelser` },
       { kind: "jobs", query: `"${brand.name}" job stilling` },
@@ -292,15 +307,15 @@ export async function runBrandResearch(job: ResearchJob, input: BrandResearchInp
     } catch (err) {
       limitations.push(`Konkurrentsøgningen fejlede: ${isAppError(err) ? err.message : "ukendt fejl"}`);
     }
-    await setStep(job.id, "search", "done", `${count} relevante resultater`);
+    await step("search", "done", `${count} relevante resultater`);
   }
 
   // 4. Konkurrenter — kun dem, der fremgår af søgeresultater; deres sider analyseres for observerbare funktioner.
   const competitorPages: Array<{ sourceId: string; name: string; url: string; features: ReturnType<typeof detectSignals>["features"] }> = [];
   if (competitorCandidates.length === 0) {
-    await setStep(job.id, "competitors", "skipped", ds.search ? "Ingen konkurrenter fundet" : "Kræver websøgning");
+    await step("competitors", "skipped", ds.search ? "Ingen konkurrenter fundet" : "Kræver websøgning");
   } else {
-    await setStep(job.id, "competitors", "running");
+    await step("competitors", "running");
     for (const candidate of competitorCandidates.slice(0, 3)) {
       try {
         const doc = await ds.fetchPage(candidate.url);
@@ -313,18 +328,18 @@ export async function runBrandResearch(job: ResearchJob, input: BrandResearchInp
         limitations.push(`Konkurrentsiden ${candidate.url} kunne ikke hentes: ${isAppError(err) ? err.message : "ukendt fejl"}`);
       }
     }
-    await setStep(job.id, "competitors", "done", `${competitorPages.length} konkurrent(er) analyseret`);
+    await step("competitors", "done", `${competitorPages.length} konkurrent(er) analyseret`);
   }
 
   // 5. Signaler og website-analyse
-  await setStep(job.id, "signals", "running");
+  await step("signals", "running");
   const analysis = detectSignals({ company: primaryLegal, pages, texts, registrySourceId: primaryRegistrySourceId, websiteAttempted });
   const websiteAnalysis = buildWebsiteAnalysis(pages, analysis.features, blocked);
   let digitalMaturity = assessDigitalMaturity(websiteAnalysis);
-  await setStep(job.id, "signals", "done", `${analysis.features.length} funktioner observeret · ${analysis.signals.length} signaler`);
+  await step("signals", "done", `${analysis.features.length} funktioner observeret · ${analysis.signals.length} signaler`);
 
   // 6. Anbefalinger (deterministisk score)
-  await setStep(job.id, "recommendations", "running");
+  await step("recommendations", "running");
   const registrySegment = segmentForIndustryCode(primaryLegal?.industry?.code);
   const textSegment: IndustrySegment = pages.length > 0 ? segmentFromText(pages.map((p) => `${p.page.title} ${p.page.description} ${p.page.headings.join(" ")} ${p.page.text}`).join(" ")) : "other";
   const segment: IndustrySegment = registrySegment !== "other" ? registrySegment : textSegment;
@@ -342,10 +357,10 @@ export async function runBrandResearch(job: ResearchJob, input: BrandResearchInp
   });
   const opportunities = buildOpportunities(recommendations, DEFAULT_SERVICE_CATALOG);
   if (recommendations.length < 5) limitations.push(`Datagrundlaget understøtter ${recommendations.length} anbefaling(er). Der er bevidst ikke fyldt op med generiske forslag.`);
-  await setStep(job.id, "recommendations", "done", `${recommendations.length} services anbefalet`);
+  await step("recommendations", "done", `${recommendations.length} services anbefalet`);
 
   // 7. Analyse
-  await setStep(job.id, "analysis", "running", ds.useAi ? "Claude analyserer kilderne" : "Regelbaseret analyse");
+  await step("analysis", "running", ds.useAi ? "Claude analyserer kilderne" : "Regelbaseret analyse");
   const rulesInput = { brandName: brand.name, company: primaryLegal, segment, segmentBasis, registrySourceId: primaryRegistrySourceId, pages, analysis, competitorPages };
   let profile = buildRulesProfile(rulesInput);
   let competitors = buildRulesCompetitors(rulesInput);
@@ -359,7 +374,7 @@ export async function runBrandResearch(job: ResearchJob, input: BrandResearchInp
 
   if (ds.isDemo) {
     summary = demoSummaryFor(input.websites.map((w) => w.url)) ?? summary;
-    await setStep(job.id, "analysis", "done", "Demo-analyse (regelbaseret på fiktive kilder)");
+    await step("analysis", "done", "Demo-analyse (regelbaseret på fiktive kilder)");
   } else if (ds.useAi) {
     try {
       const ai = await runClaudeAnalysis({ brandName: brand.name, websites: input.websites.map((w) => w.url), legalEntity: primaryLegal, sources, websiteAnalysis, signals: analysis.signals, recommendations });
@@ -398,19 +413,20 @@ export async function runBrandResearch(job: ResearchJob, input: BrandResearchInp
       if (ai.meetingQuestions.length > 0) meetingQuestions = Array.from(new Set([...extraQuestions, ...ai.meetingQuestions])).slice(0, 10);
       if (ai.overallRecommendation) overallRecommendation = ai.overallRecommendation;
       if (ai.downgraded > 0) limitations.push(`${ai.downgraded} AI-påstand(e) uden gyldig kilde blev nedgraderet fra fakta til vurdering.`);
-      await setStep(job.id, "analysis", "done", `Claude (${model}) · est. ${ai.costUsd.toFixed(3)} USD`);
+      await observer?.onAiUsage?.({ model: ai.model, inputTokens: ai.inputTokens, outputTokens: ai.outputTokens, costUsd: ai.costUsd });
+      await step("analysis", "done", `Claude (${model}) · est. ${ai.costUsd.toFixed(3)} USD`);
     } catch (err) {
       const message = isAppError(err) ? err.message : "ukendt fejl";
       limitations.push(`AI-analysen fejlede (${message}) — rapporten bygger på regelbaseret analyse.`);
-      await setStep(job.id, "analysis", "failed", `${message} · regelbaseret analyse anvendt`);
+      await step("analysis", "failed", `${message} · regelbaseret analyse anvendt`);
     }
   } else {
-    limitations.push("AI-analyse er ikke konfigureret (ANTHROPIC_API_KEY) — rapporten bygger på en gennemsigtig, regelbaseret analyse.");
-    await setStep(job.id, "analysis", "done", "Regelbaseret (AI ikke konfigureret)");
+    limitations.push(ds.aiUnavailableReason ?? "AI-analyse er ikke konfigureret (ANTHROPIC_API_KEY) — rapporten bygger på en gennemsigtig, regelbaseret analyse.");
+    await step("analysis", "done", ds.aiUnavailableReason ? "Regelbaseret (AI fravalgt af routeren)" : "Regelbaseret (AI ikke konfigureret)");
   }
 
   // 8. Rapport
-  await setStep(job.id, "report", "running");
+  await step("report", "running");
   const now = nowIso();
   const report: ResearchReport = {
     id: newId("researchReport"),
@@ -442,7 +458,7 @@ export async function runBrandResearch(job: ResearchJob, input: BrandResearchInp
     updatedAt: now,
   };
   await reportStore.upsert(report);
-  await setStep(job.id, "report", "done");
+  await step("report", "done");
   await jobStore.update(job.id, (j) => ({ ...j, status: "completed", reportId: report.id, finishedAt: nowIso(), updatedAt: nowIso() }));
   await publishEvent({
     type: "research.completed",

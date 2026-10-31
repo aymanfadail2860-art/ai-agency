@@ -20,6 +20,8 @@ export const ID_PREFIXES = {
   quoteLineItem: "qli",
   handoff: "hnd",
   event: "evt",
+  aiJob: "aij",
+  approval: "apr",
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

@@ -1,5 +1,21 @@
 # Sikkerhed og kvalitet
 
+## Tilføjet i V3 (fælles AI-infrastruktur og AOS)
+
+| Område | Implementering |
+|---|---|
+| **Godkendelser** | Kritiske handlinger (deployment, kundesystemer, betalte handlinger, massehandlinger, destruktive databaseændringer, kundekommunikation, agentændringer) kræver eksplicit godkendelse i AOS. Beslutninger registreres præcis én gang. |
+| **Agentændringer** | Instruktioner ændres aldrig direkte. En ændring bliver en ny, uforanderlig og valideret version (kun kendte værktøjer, motorer og opgavetyper), der først aktiveres efter godkendelse. Grundversionerne ligger i GitHub. |
+| **Claude Code-callbacks** | Engangsnøgle pr. job (256 bit), kun SHA-256 gemt, sammenligning i konstant tid, udløb, annullering ved resultat/annullering, maks. 150 hændelser pr. job, hastighedsgrænse pr. job og Zod-validering af hver besked. Resultatet valideres mod opgavetypens skema. |
+| **Ingen dobbelt eksekvering** | Rutine-API'et har ingen idempotens: et kald uden entydigt svar genforsøges aldrig automatisk og kræver brugerens bekræftelse. Åbne job dedupliceres pr. idempotensnøgle. |
+| **Ingen opdigtet aktivitet** | Agentstatus, Agent Office og Live Activity udledes kun af registrerede job. Modellernes interne ræsonnement vises ikke. Demo-data er markeret. |
+| **Omkostninger** | Daglige lofter pr. motor, godkendelsestærskel for API-job og omkostning registreret pr. job, kunde, modul og motor. Abonnementsforbrug rapporteres separat. |
+| **Credentials** | Rutine-tokens og API-nøgler ligger kun i Vercel (Sensitive). Integration Manager viser variabelnavne, aldrig værdier. Intet er bundet til en personlig konto i koden. |
+
+**Kendt risiko, før betalte motorer aktiveres:** platformen har intet login. Med `ANTHROPIC_API_KEY` eller et rutine-token kan alle med linket bruge budgettet. Lofterne begrænser skaden, men adgangskontrol (anbefalet: Supabase Auth med én tilladt e-mail) bør indføres først. Se [v3-architecture.md §8](v3-architecture.md).
+
+**Supabase-rådgivning:** `private.config` har RLS slået fra. Tabellen er kun tilgængelig for rollen `postgres` (ingen rettigheder for `anon`/`authenticated`), og `private`-skemaet eksponeres ikke via API'et, så den reelle risiko er lav. Anbefalet hærdning (kræver din godkendelse): `alter table private.config enable row level security;` (uden policies; påvirker ikke server-rollen).
+
 ## Implementeret i V1
 
 | Område | Implementering |

@@ -2,7 +2,7 @@
   "name": "@agency/web",
   "version": "0.1.0",
   "private": true,
-  "description": "Hovedapplikation (Next.js App Router) — samler de fem moduler",
+  "description": "Hovedapplikation (Next.js App Router) — samler de seks moduler",
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
@@ -10,10 +10,12 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@agency/aos": "workspace:*",
     "@agency/core": "workspace:*",
     "@agency/crm": "workspace:*",
     "@agency/dashboard": "workspace:*",
     "@agency/integrations": "workspace:*",
+    "@agency/orchestrator": "workspace:*",
     "@agency/production": "workspace:*",
     "@agency/quotes": "workspace:*",
     "@agency/research": "workspace:*",

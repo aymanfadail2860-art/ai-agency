@@ -6,7 +6,7 @@ import { IsoDate, ModeSchema } from "./models";
  * Hændelser beskriver noget, der allerede er sket. De logges i V1 og danner
  * grundlag for fremtidige workflows (fx CRM-aktiviteter og dashboard-KPI'er).
  */
-export const ModuleKeySchema = z.enum(["research", "quotes", "production", "crm", "dashboard", "platform"]);
+export const ModuleKeySchema = z.enum(["research", "quotes", "production", "crm", "dashboard", "aos", "platform"]);
 export type ModuleKey = z.infer<typeof ModuleKeySchema>;
 
 export const EVENT_TYPES = [
@@ -26,6 +26,11 @@ export const EVENT_TYPES = [
   "quote.pdf.exported",
   "catalog.updated",
   "settings.updated",
+  "ai.job.created",
+  "ai.job.completed",
+  "ai.job.failed",
+  "approval.decided",
+  "agent.version.created",
 ] as const;
 
 export const DomainEventSchema = z.object({
@@ -40,6 +45,7 @@ export const DomainEventSchema = z.object({
     reportId: z.string().optional(),
     quoteId: z.string().optional(),
     jobId: z.string().optional(),
+    aiJobId: z.string().optional(),
   }),
   payload: z.record(z.unknown()),
 });

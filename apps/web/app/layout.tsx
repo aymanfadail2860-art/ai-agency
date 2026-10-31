@@ -9,7 +9,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "AI Agency Platform", template: "%s · AI Agency Platform" },
-  description: "Research, tilbud, produktion, CRM og dashboard for et AI-bureau.",
+  description: "Intern arbejdsplatform for AI-bureauet: research, tilbud, produktion, CRM, dashboard og AOS.",
   robots: { index: false, follow: false },
 };
 

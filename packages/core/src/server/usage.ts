@@ -12,9 +12,10 @@ import { createCollectionStore } from "./json-store";
  *   SEARCH_DAILY_LIMIT     (standard 300)  — antal websøgninger pr. døgn
  *   RESEARCH_DAILY_LIMIT   (standard 40)   — antal researchjob pr. døgn
  *   CVR_DAILY_LIMIT        (standard 500)  — antal CVR-opslag pr. døgn
+ *   CLAUDE_CODE_DAILY_LIMIT (standard 20)  — antal Claude Code-rutinekørsler pr. døgn (abonnement, ingen USD-pris)
  */
 
-export const UsageProviderSchema = z.enum(["anthropic", "brave", "cvr", "research_jobs"]);
+export const UsageProviderSchema = z.enum(["anthropic", "brave", "cvr", "research_jobs", "claude_code_runs"]);
 export type UsageProvider = z.infer<typeof UsageProviderSchema>;
 
 const DailyUsageSchema = z.object({
@@ -44,6 +45,7 @@ export const usageLimits = {
   searchDailyLimit: () => num("SEARCH_DAILY_LIMIT", 300),
   researchDailyLimit: () => num("RESEARCH_DAILY_LIMIT", 40),
   cvrDailyLimit: () => num("CVR_DAILY_LIMIT", 500),
+  claudeCodeDailyLimit: () => num("CLAUDE_CODE_DAILY_LIMIT", 20),
 };
 
 export async function getDailyUsage(provider: UsageProvider, day = today()): Promise<DailyUsage> {
@@ -99,10 +101,13 @@ export async function assertWithinBudget(provider: UsageProvider): Promise<void>
   if (provider === "cvr" && usage.calls >= usageLimits.cvrDailyLimit()) {
     throw new AppError("rate_limited", `Dagens grænse for CVR-opslag (${usageLimits.cvrDailyLimit()}) er nået.`);
   }
+  if (provider === "claude_code_runs" && usage.calls >= usageLimits.claudeCodeDailyLimit()) {
+    throw new AppError("rate_limited", `Dagens grænse for Claude Code-kørsler (${usageLimits.claudeCodeDailyLimit()}) er nået.`);
+  }
 }
 
 export async function getUsageOverview(): Promise<Array<DailyUsage & { limit: string }>> {
-  const providers: UsageProvider[] = ["anthropic", "brave", "cvr", "research_jobs"];
+  const providers: UsageProvider[] = ["anthropic", "brave", "cvr", "research_jobs", "claude_code_runs"];
   const rows = await Promise.all(providers.map((p) => getDailyUsage(p)));
   return rows.map((r) => ({
     ...r,
@@ -113,6 +118,8 @@ export async function getUsageOverview(): Promise<Array<DailyUsage & { limit: st
           ? `${usageLimits.searchDailyLimit()} søgninger/døgn`
           : r.provider === "cvr"
             ? `${usageLimits.cvrDailyLimit()} opslag/døgn`
-            : `${usageLimits.researchDailyLimit()} job/døgn`,
+            : r.provider === "claude_code_runs"
+              ? `${usageLimits.claudeCodeDailyLimit()} kørsler/døgn (abonnement)`
+              : `${usageLimits.researchDailyLimit()} job/døgn`,
   }));
 }

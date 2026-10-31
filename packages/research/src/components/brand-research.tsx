@@ -3,7 +3,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Brand, BrandLegalEntityRelation, Company, Establishment, ResearchJob, ResearchStep, Website } from "@agency/core";
-import { Alert, apiFetch, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label, Spinner } from "@agency/ui";
+import { Alert, apiFetch, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label, Select, Spinner } from "@agency/ui";
 import { formatDateTime } from "@agency/shared";
 import { Building2, CheckCircle2, Circle, CircleSlash, FileSearch, Globe, Loader2, MapPin, ShieldCheck, ShieldQuestion, ShieldX, Sparkles, XCircle } from "lucide-react";
 
@@ -13,7 +13,21 @@ export interface BrandResearchProps {
   relations: Array<{ relation: BrandLegalEntityRelation; legalEntity: Company | null; establishments: Establishment[] }>;
   latestJob: ResearchJob | null;
   reports: Array<{ id: string; createdAt: string; status: string; analysisEngine: string }>;
+  /** Motorpolitikker fra den fælles AI-infrastruktur (vises kun i Live Mode). */
+  policyOptions?: Array<{ value: string; label: string }>;
+  /** Ekstra paneler (fx dyb research) fra kompositionslaget. */
+  aside?: React.ReactNode;
 }
+
+interface AiJobInfo {
+  id: string;
+  status: string;
+  engine: "internal" | "claude_api" | "claude_code" | null;
+  fallback: boolean;
+  explanation: string | null;
+}
+
+const ENGINE_NAMES: Record<string, string> = { internal: "Intern software (regelbaseret)", claude_api: "Claude API", claude_code: "Claude Code-rutine" };
 
 function StepIcon({ status }: { status: ResearchStep["status"] }) {
   if (status === "done") return <CheckCircle2 className="h-4 w-4 text-success" />;
@@ -57,9 +71,11 @@ const STATUS_BADGE = {
   ),
 };
 
-export function BrandResearch({ brand, websites, relations, latestJob, reports }: BrandResearchProps) {
+export function BrandResearch({ brand, websites, relations, latestJob, reports, policyOptions, aside }: BrandResearchProps) {
   const router = useRouter();
   const [job, setJob] = React.useState<ResearchJob | null>(latestJob && (latestJob.status === "running" || latestJob.status === "queued") ? latestJob : null);
+  const [aiJob, setAiJob] = React.useState<AiJobInfo | null>(null);
+  const [policy, setPolicy] = React.useState("AUTO");
   const [website, setWebsite] = React.useState("");
   const [cvr, setCvr] = React.useState("");
   const [busy, setBusy] = React.useState<string | null>(null);
@@ -100,7 +116,13 @@ export function BrandResearch({ brand, websites, relations, latestJob, reports }
   const start = () =>
     act(
       "start",
-      async () => setJob(await apiFetch<ResearchJob>("/api/research/jobs", { body: { brandId: brand.id, websiteUrl: website.trim() || null } })),
+      async () => {
+        const res = await apiFetch<(ResearchJob & { aiJob?: AiJobInfo }) | { id: null; status: string; aiJob: AiJobInfo }>("/api/research/jobs", {
+          body: { brandId: brand.id, websiteUrl: website.trim() || null, ...(brand.mode === "live" ? { policy } : {}) },
+        });
+        setAiJob(res.aiJob ?? null);
+        if (res.id) setJob(res as ResearchJob);
+      },
       false,
     );
 
@@ -233,14 +255,41 @@ export function BrandResearch({ brand, websites, relations, latestJob, reports }
                 <p className="text-xs text-muted-foreground">Kun offentlige sider hentes (maks. 8), og robots.txt respekteres.</p>
               </div>
             )}
+            {brand.mode === "live" && policyOptions && policyOptions.length > 1 && (
+              <div className="space-y-2">
+                <Label htmlFor="policy">AI-motor</Label>
+                <Select id="policy" value={policy} onChange={(e) => setPolicy(e.target.value)} disabled={Boolean(running)} data-testid="research-policy">
+                  {policyOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
+                <p className="text-xs text-muted-foreground">Automatisk: routeren vælger Claude API, hvis den er konfigureret og inden for budget — ellers regelbaseret analyse.</p>
+              </div>
+            )}
             <Button className="w-full" size="lg" onClick={start} disabled={Boolean(running) || busy !== null} data-testid="start-research">
               {running || busy === "start" ? <Spinner /> : <Sparkles />} {running ? "Research kører…" : "Start AI Research"}
             </Button>
+            {aiJob && (
+              <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs" data-testid="research-routing">
+                <p>
+                  <span className="font-medium">Motor:</span> {aiJob.engine ? ENGINE_NAMES[aiJob.engine] : "ingen"}
+                  {aiJob.fallback && <span className="text-muted-foreground"> (fallback)</span>} ·{" "}
+                  <Link href={`/aos/jobs/${aiJob.id}`} className="text-accent hover:underline">
+                    Se i AOS
+                  </Link>
+                </p>
+                {aiJob.explanation && <p className="mt-1 text-muted-foreground">{aiJob.explanation}</p>}
+                {aiJob.status === "awaiting_approval" && <p className="mt-1 font-medium text-warning-foreground">Afventer godkendelse i AOS, før researchen starter.</p>}
+              </div>
+            )}
             {job && <JobProgress job={job} />}
             {job?.status === "failed" && <Alert variant="error" title="Researchen fejlede">{job.error}</Alert>}
             {error && <Alert variant="error" title="Handlingen mislykkedes">{error}</Alert>}
           </CardContent>
         </Card>
+        {aside}
         {reports.length > 0 && (
           <Card>
             <CardHeader>

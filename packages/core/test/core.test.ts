@@ -4,10 +4,10 @@ import { CONTRACT_REGISTRY, DEFAULT_SERVICE_CATALOG, MODULES, ProductionIntakeSc
 import { checkRateLimit, companyRegistry, createCollectionStore, listEvents, resetRateLimits } from "@agency/core/server";
 
 describe("modulregister", () => {
-  it("indeholder fem selvstændige moduler med egne routes; kun Research og Tilbud er aktive", () => {
-    expect(MODULES.map((m) => m.key)).toEqual(["research", "quotes", "production", "crm", "dashboard"]);
-    expect(MODULES.filter((m) => m.status === "active").map((m) => m.key)).toEqual(["research", "quotes"]);
-    expect(new Set(MODULES.map((m) => m.route)).size).toBe(5);
+  it("indeholder seks selvstændige moduler med egne routes; Research, Tilbud og AOS er aktive", () => {
+    expect(MODULES.map((m) => m.key)).toEqual(["research", "quotes", "production", "crm", "dashboard", "aos"]);
+    expect(MODULES.filter((m) => m.status === "active").map((m) => m.key)).toEqual(["research", "quotes", "aos"]);
+    expect(new Set(MODULES.map((m) => m.route)).size).toBe(6);
     expect(MODULES.find((m) => m.key === "production")!.route).toBe("/production");
   });
   it("dokumenterer kontrakter — kun research.quote-handoff (v2 og v1) er aktiv", () => {

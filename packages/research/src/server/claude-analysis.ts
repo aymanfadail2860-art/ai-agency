@@ -241,5 +241,5 @@ export async function runClaudeAnalysis(input: ClaudeAnalysisInput) {
     schema: ClaudeAnalysisSchema,
     effort: "medium",
   });
-  return { ...sanitizeClaudeAnalysis(result.data, input), model: result.model, costUsd: result.estimatedCostUsd };
+  return { ...sanitizeClaudeAnalysis(result.data, input), model: result.model, costUsd: result.estimatedCostUsd, inputTokens: result.inputTokens, outputTokens: result.outputTokens };
 }

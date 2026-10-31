@@ -10,6 +10,8 @@ export type AppErrorCode =
   | "timeout"
   | "not_implemented"
   | "mode_mismatch"
+  | "unauthorized"
+  | "forbidden"
   | "internal_error";
 
 const STATUS: Record<AppErrorCode, number> = {
@@ -24,6 +26,8 @@ const STATUS: Record<AppErrorCode, number> = {
   timeout: 504,
   not_implemented: 501,
   mode_mismatch: 409,
+  unauthorized: 401,
+  forbidden: 403,
   internal_error: 500,
 };
 

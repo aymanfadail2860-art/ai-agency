@@ -37,6 +37,8 @@ const nextConfig: NextConfig = {
     "@agency/production",
     "@agency/crm",
     "@agency/dashboard",
+    "@agency/orchestrator",
+    "@agency/aos",
   ],
   serverExternalPackages: ["@anthropic-ai/sdk", "undici", "pdf-lib"],
   async headers() {

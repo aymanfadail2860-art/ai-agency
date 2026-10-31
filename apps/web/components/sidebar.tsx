@@ -3,9 +3,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MODULES } from "@agency/core";
 import { cn } from "@agency/ui";
-import { Factory, FileText, LayoutDashboard, Search, Settings, Sparkles, Users } from "lucide-react";
+import { Bot, Factory, FileText, LayoutDashboard, Search, Settings, Sparkles, Users } from "lucide-react";
 
-const ICONS = { search: Search, "file-text": FileText, factory: Factory, users: Users, "layout-dashboard": LayoutDashboard };
+const ICONS = { search: Search, "file-text": FileText, factory: Factory, users: Users, "layout-dashboard": LayoutDashboard, bot: Bot };
 
 export function Sidebar({ mode }: { mode: "demo" | "live" }) {
   const pathname = usePathname();
@@ -19,7 +19,7 @@ export function Sidebar({ mode }: { mode: "demo" | "live" }) {
         </span>
         <div className="leading-tight">
           <p className="text-sm font-semibold tracking-tight">AI Agency</p>
-          <p className="text-[11px] text-sidebar-muted">Platform V1</p>
+          <p className="text-[11px] text-sidebar-muted">Intern platform · V3</p>
         </div>
       </div>
       <nav aria-label="Moduler" className="flex-1 space-y-1 px-3 py-4">
@@ -58,7 +58,7 @@ export function Sidebar({ mode }: { mode: "demo" | "live" }) {
             isActive("/settings") ? "bg-white/10 text-white" : "text-sidebar-foreground/80 hover:bg-white/5 hover:text-white",
           )}
         >
-          <span className="w-4 text-[10px] tabular-nums text-sidebar-muted">6</span>
+          <span className="w-4" />
           <Settings className="h-4 w-4" />
           <span>Indstillinger</span>
         </Link>

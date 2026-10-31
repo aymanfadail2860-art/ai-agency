@@ -1,4 +1,6 @@
-# Næste udviklingsfase (V3)
+# Næste udviklingsfase
+
+> **V3 er påbegyndt.** Den fælles AI-infrastruktur (Job Center, router, agenter, godkendelser, omkostninger) og AOS er implementeret, og Research kører gennem den. Den prioriterede plan for de næste etaper står i [v3-architecture.md §9](v3-architecture.md). Punkterne nedenfor er det oprindelige forslag fra V2 og gælder fortsat som modulbeskrivelser.
 
 Forslag i prioriteret rækkefølge. Kontrakterne er allerede dokumenteret i [api-contracts.md](api-contracts.md).
 

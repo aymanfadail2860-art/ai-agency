@@ -8,7 +8,7 @@ Fejlsvar fra alle endepunkter har formen:
 { "error": { "code": "validation_error", "message": "Dansk, brugervendt besked" } }
 ```
 
-Koder: `validation_error` (400), `blocked_url` (400), `forbidden` (403, anden oprindelse), `not_found` (404), `upstream_not_found` (404), `conflict` (409), `mode_mismatch` (409), `rate_limited` (429), `not_implemented` (501), `integration_error` (502), `integration_not_configured` (503), `timeout` (504), `internal_error` (500).
+Koder: `validation_error` (400), `blocked_url` (400), `unauthorized` (401, ugyldig callback-nøgle), `forbidden` (403, anden oprindelse), `not_found` (404), `upstream_not_found` (404), `conflict` (409), `mode_mismatch` (409), `rate_limited` (429), `not_implemented` (501), `integration_error` (502), `integration_not_configured` (503), `timeout` (504), `internal_error` (500).
 
 ---
 
@@ -146,7 +146,8 @@ Kan genereres direkte fra platformens hændelseslog (`research.completed`, `quot
 | GET | `/api/research/companies?mode=` | V1-kompatibel: lister nu brands |
 | POST | `/api/research/companies/lookup` | `{ cvr }` → Company (Live, rate limit 20/min) |
 | POST | `/api/research/companies/demo` | `{ key }` → fiktiv Company |
-| POST | `/api/research/jobs` | `{ brandId, websiteUrl? }` (eller V1 `{ companyId }`) → 202 ResearchJob (rate limit 10/min, dagligt loft) |
+| POST | `/api/research/jobs` | `{ brandId, websiteUrl?, policy? }` (eller V1 `{ companyId }`) → 202 ResearchJob + `aiJob { id, status, engine, policy, fallback, explanation }`. Kører via Job Center. 409 hvis routeren blokerer (fx `CLAUDE_API_ONLY` uden nøgle eller deaktiveret agent) |
+| POST | `/api/research/brands/:id/deep-research` | `{ focus? }` → 202 AiJob (`research.deep_research` via Claude Code-rutine; `blocked` med begrundelse, hvis den ikke er tilgængelig) |
 | GET | `/api/research/jobs/:id` | Jobstatus med trin |
 | GET/PATCH | `/api/research/reports/:id` | Rapport; PATCH `{ notes?, status?, recommendations?: [{ id, selected?, editedDescription?, note? }] }` |
 | POST | `/api/research/reports/:id/handoff` | Opretter tilbud via kontrakt 1 |
@@ -157,3 +158,32 @@ Kan genereres direkte fra platformens hændelseslog (`research.completed`, `quot
 | GET | `/api/quotes/:id/pdf?version=` | PDF-download |
 | GET | `/api/catalog` | Servicekatalog med aktuelle demopriser |
 | PUT/DELETE | `/api/catalog/:id` | Redigér eller nulstil pris, beskrivelse og leverancer |
+
+## AOS og fælles AI-infrastruktur (V3)
+
+| Metode | Sti | Beskrivelse |
+|---|---|---|
+| GET | `/api/aos/overview` | Command Center-tal + agentstatus (polles af Agent Office) |
+| GET | `/api/aos/jobs?status=&module=&agentId=&brandId=&taskType=` | Job Center for aktuel tilstand |
+| GET | `/api/aos/jobs/:id` | Job med routing, tidslinje, resultat og omkostning (uden callback-hash) |
+| POST | `/api/aos/jobs/:id/cancel` | Annullér. Claude Code-sessioner stoppes ikke automatisk (vises tydeligt) |
+| POST | `/api/aos/jobs/:id/retry` | `{ confirmPossibleDuplicate? }`. Ny routing, maks. 3 forsøg |
+| POST | `/api/aos/jobs/:id/callback` | Tilbagemelding fra Claude Code-session. `Authorization: Bearer <engangsnøgle>` |
+| GET | `/api/aos/activity?since=` | Live Activity (registrerede hændelser) |
+| GET | `/api/aos/agents` · `/api/aos/agents/:id` | Agenter med status · agent + versioner |
+| PATCH | `/api/aos/agents/:id` | `{ enabled }` |
+| POST | `/api/aos/agents/:id/versions` | Ny version (valideret). Afventer godkendelse |
+| GET · POST | `/api/aos/approvals` · `/api/aos/approvals/:id` | Liste · `{ decision: "approved"\|"rejected", note? }` |
+| GET · POST | `/api/aos/integrations` · `/api/aos/integrations/:key/test` | Integration Manager · omkostningsfri test |
+
+### Callback-protokol `ai-agency.routine-job@1`
+
+Fire-teksten til rutinen er JSON: `{ protocol, jobId, taskType, title, agent, agentVersion, callback: { url, token, expiresAt }, input }`. Sessionen svarer:
+
+```ts
+{ type: "progress", kind: "step" | "tool_call" | "file" | "test", message }          // 0..n
+{ type: "result", status: "succeeded", summary, data, artifacts?: [{ kind, label, url }] }
+{ type: "result", status: "failed", error: { message } }
+```
+
+`data` valideres mod opgavetypens skema. For `research.deep_research`: `DeepResearchResultSchema` i `packages/research/src/deep-research.ts`. Fuld beskrivelse i [routines/ai-agency-job.md](../routines/ai-agency-job.md).

@@ -1,8 +1,10 @@
-# Arkitektur — AI Agency Platform (V2)
+# Arkitektur — AI Agency Platform (V2 + V3)
+
+> **V3:** Et sjette modul (AOS) og en fælles AI-infrastruktur (`@agency/orchestrator`) er tilføjet. Alle AI-opgaver går gennem Job Center og en regelbaseret router med motorerne Claude Code-rutine, Claude API og intern software. Se [v3-architecture.md](v3-architecture.md). Resten af dette dokument beskriver modulgrænser og Research/Tilbud, som er uændrede.
 
 ## 1. Principper
 
-1. **Fem selvstændige forretningsmoduler** (Research, Tilbud, Produktion & Levering, CRM, Dashboard) på samme niveau, hver i sin egen pakke med egen route.
+1. **Seks selvstændige moduler** (Research, Tilbud, Produktion & Levering, CRM, Dashboard og AOS) på samme niveau, hver i sin egen pakke med egen route.
 2. **Produktion & Levering er ikke en del af Tilbud.** Modulet modtager senere opgaver fra Tilbud *og* CRM gennem kontrakten `quotes.production-intake@1`, hvor feltet `sentBy` angiver afsenderen.
 3. **Kommunikation kun via kontrakter.** Et modul må aldrig læse et andet moduls lagring. Kontrakter er versionerede Zod-skemaer i `@agency/core`.
 4. **Fælles platformkerne** for kundeidentitet, datamodeller, hændelser, modulregister og lagring.

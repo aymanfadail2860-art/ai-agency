@@ -8,7 +8,7 @@ export interface ModuleDescriptor {
   route: string;
   status: ModuleStatus;
   /** Navn på Lucide-ikon (opløses i UI-laget). */
-  icon: "search" | "file-text" | "factory" | "users" | "layout-dashboard";
+  icon: "search" | "file-text" | "factory" | "users" | "layout-dashboard" | "bot";
   description: string;
 }
 
@@ -53,6 +53,14 @@ export const MODULES: readonly ModuleDescriptor[] = [
     status: "pending",
     icon: "layout-dashboard",
     description: "KPI'er, omsætning, projekter og performance.",
+  },
+  {
+    key: "aos",
+    name: "AOS",
+    route: "/aos",
+    status: "active",
+    icon: "bot",
+    description: "Agent Operating System: AI-agenter, opgaver, godkendelser, aktivitet og omkostninger på tværs af modulerne.",
   },
 ] as const;
 

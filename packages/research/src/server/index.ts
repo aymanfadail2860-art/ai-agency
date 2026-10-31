@@ -1,6 +1,6 @@
 export * from "./service";
 export { RESEARCH_STEPS, runBrandResearch, demoDataSources, liveDataSources, newJob, buildRelationSnapshot } from "./pipeline";
-export type { ResearchDataSources, BrandResearchInput } from "./pipeline";
+export type { ResearchDataSources, BrandResearchInput, ResearchObserver } from "./pipeline";
 export { DEMO_DATASETS, DEMO_REGISTRY, DEMO_EXAMPLES } from "./demo-data";
 export { discoverByCvr, discoverByUrl, demoDiscoverySources, liveDiscoverySources, normalizeResearchUrl } from "./discovery";
 export type { DiscoveryResult, DiscoveredLegalEntity, BrandCandidate } from "./discovery";

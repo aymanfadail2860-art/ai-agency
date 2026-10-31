@@ -92,7 +92,7 @@ export default async function SettingsPage() {
               <TBody>
                 {usage.map((u) => (
                   <TR key={u.provider} data-testid={`usage-${u.provider}`}>
-                    <TD className="font-medium">{{ anthropic: "Claude (AI)", brave: "Brave Search", cvr: "CVR-opslag", research_jobs: "Researchjob" }[u.provider]}</TD>
+                    <TD className="font-medium">{{ anthropic: "Claude (AI)", brave: "Brave Search", cvr: "CVR-opslag", research_jobs: "Researchjob", claude_code_runs: "Claude Code-kørsler" }[u.provider]}</TD>
                     <TD className="text-right tabular-nums">{u.calls}</TD>
                     <TD className="text-right tabular-nums text-muted-foreground">{u.provider === "anthropic" ? `${u.inputTokens.toLocaleString("da-DK")} / ${u.outputTokens.toLocaleString("da-DK")}` : "—"}</TD>
                     <TD className="text-right tabular-nums">{u.provider === "anthropic" ? `${u.estimatedCostUsd.toFixed(3)} USD` : "—"}</TD>

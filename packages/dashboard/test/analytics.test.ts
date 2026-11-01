@@ -283,6 +283,15 @@ describe("Action Center", () => {
   });
 });
 
+describe("Tidsakser", () => {
+  it("hele perioden vælger opløsning ud fra tidligste aftale (inkl. projekters startdato)", () => {
+    const d = computeDashboard(snapshot({ projects: [project("prj_1", "brd_1", { createdAt: daysAgo(1), startDate: dayStr(90) })] }), F({ period: "all" }));
+    expect(d.period.bucket).toBe("week");
+    expect(d.finance.series.length).toBeLessThanOrEqual(15);
+    expect(d.finance.series.at(-1)!.values.mrr).toBe(2900);
+  });
+});
+
 describe("Determinisme", () => {
   it("samme input giver samme output, og input ændres ikke", () => {
     const snap = snapshot({ accounts: [account("acc_1", "brd_1", "A")], opportunities: [opp("sop_1", "acc_1")], projects: [project("prj_1", "brd_1")] });

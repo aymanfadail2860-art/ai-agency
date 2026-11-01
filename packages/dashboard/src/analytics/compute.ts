@@ -139,7 +139,8 @@ export function customerKeyFor(brandId: string | null, name: string): string {
 }
 
 function scope(snap: AnalyticsSnapshot, filter: DashboardFilter): Scoped {
-  const earliest = [...snap.accounts.map((a) => a.createdAt), ...snap.opportunities.map((o) => o.createdAt), ...snap.projects.map((p) => p.createdAt), ...snap.jobs.map((j) => j.createdAt)].sort()[0] ?? null;
+  // Tidligste registrering på tværs af modulerne (inkl. projekters startdato, som også er aftaledato) bestemmer grafernes opløsning for "hele perioden".
+  const earliest = [...snap.accounts.map((a) => a.createdAt), ...snap.opportunities.map((o) => o.createdAt), ...snap.projects.map((p) => (p.startDate && p.startDate < p.createdAt.slice(0, 10) ? `${p.startDate}T00:00:00.000Z` : p.createdAt)), ...snap.jobs.map((j) => j.createdAt)].sort()[0] ?? null;
   const period = resolvePeriod(filter, snap.now, earliest);
   const catalog = new Map(snap.catalog.map((c) => [c.id, c.category]));
   const categoryOf = (id: string) => catalog.get(id) ?? null;

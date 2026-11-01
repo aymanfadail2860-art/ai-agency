@@ -1,4 +1,4 @@
-# AI Agency Platform — V3
+# AI Agency Platform — V4
 
 Bureauets **interne arbejdsplatform**: research, salg, produktion, levering, kundestyring, rapportering og koordinering af specialiserede AI-agenter. Det er ikke en SaaS; kunderne får de løsninger, vi bygger, ikke adgang til platformen.
 
@@ -12,6 +12,8 @@ Bureauets **interne arbejdsplatform**: research, salg, produktion, levering, kun
 | 4 | CRM | `/crm` | **Aktiv (V3.3)**: leads og virksomheder uden dubletter, kontaktpersoner, Kanban-pipeline med 10 stadier, aktiviteter (liste og tidslinje), 360-graders kundeprofil på tværs af Research, Tilbud, Produktion og AOS (Echo), og en guidet 12-trins demo. Se [docs/crm.md](docs/crm.md) |
 | 5 | Dashboard | `/dashboard` | **Aktiv (V3.4)**: Executive Command Center med Executive Overview, Salg, Økonomi, Levering, AI og agenter samt Action Center. Har globale filtre, interaktive grafer, et deterministisk analytics-lag uden dobbeltoptælling, Dashboard Demo Mode og det samlede seks-moduls forløb. Se [docs/dashboard.md](docs/dashboard.md) |
 | 6 | AOS — Agent Operating System | `/aos` | **Aktiv (V3)**: Command Center, isometrisk Agent Office, Agent Library (versioneret), Job Center, Live Activity, Godkendelser, Performance & Cost, Integration Manager |
+
+**Adgangsbeskyttelse (V4.1):** Platformen er privat. Alle sider og API'er kræver login med Supabase Auth og rollen `admin`. Det gælder ikke kun brugerfladen: middleware, hver API-route og layoutet kontrollerer adgangen server-side, og datalageret er låst til servernøglen. Se [docs/security.md](docs/security.md) og opsætningen af administrator i [docs/auth-setup.md](docs/auth-setup.md).
 
 **Fælles AI-infrastruktur (V3, `@agency/orchestrator`):** alle opgaver går gennem Job Center. En regelbaseret, forklarlig router vælger motor: Claude Code-rutine (abonnement), Claude API (betalt) eller intern software uden AI. Godkendelser, omkostninger og agenternes status registreres samlet. Se [docs/v3-architecture.md](docs/v3-architecture.md) og [docs/claude-code-integration.md](docs/claude-code-integration.md).
 
@@ -78,13 +80,13 @@ Indstillinger viser, om platformen bruger "Supabase (database)" eller "lokale JS
 ## Test
 
 ```bash
-pnpm test        # Vitest: 139 enhedstests (router, Job Center, callbacks, agentversioner, brand-first, scoring, priser, kontrakter, SSRF, budgetter …)
-pnpm test:e2e    # Playwright: scenarierne A-F + AOS + Produktion + CRM + Dashboard (KPI'er, filtre, Action Center, demo og det samlede seks-moduls forløb)
+pnpm test        # Vitest: 148 enhedstests (router, Job Center, callbacks, agentversioner, brand-first, scoring, priser, kontrakter, SSRF, budgetter …)
+pnpm test:e2e    # Playwright (kræver Docker: rigtig Supabase Auth startes lokalt): adgangskontrol + scenarierne A-F + AOS + Produktion + CRM + Dashboard (KPI'er, filtre, Action Center, demo og det samlede seks-moduls forløb)
 LIVE_BASE_URL=https://… pnpm exec playwright test -c playwright.live.config.ts   # live-test mod en deployet instans
 pnpm typecheck   # TypeScript i alle pakker
 ```
 
-E2E-testene starter en server på port 3210 med en tom datamappe (`.data-e2e/`).
+E2E-testene starter den officielle Supabase Auth-server (`supabase/auth`) og Postgres i Docker (`scripts/local-auth`) samt platformen på port 3210 med en tom datamappe (`.data-e2e/`). Testbrugere oprettes med tilfældige adgangskoder pr. kørsel. Ingen mock af login eller sessioner.
 
 ---
 
@@ -125,7 +127,8 @@ Hvert forretningsmodul har en klientsikker indgang (`@agency/<modul>`: komponent
 - [Claude Code som motor — verificerede muligheder og begrænsninger](docs/claude-code-integration.md)
 - [Arkitektur og modulgrænser](docs/architecture.md)
 - [API-kontrakter og endepunkter](docs/api-contracts.md)
-- [Sikkerhed, og hvad der mangler før produktion](docs/security.md)
+- [Sikkerhed og adgangsbeskyttelse (V4.1)](docs/security.md)
+- [Opsætning af administrator og adgang](docs/auth-setup.md)
 - [Næste udviklingsfase](docs/next-phase.md)
 
 ## ZIP-eksport
@@ -138,11 +141,10 @@ Eksporten indeholder kildekode og dokumentation, men ikke `node_modules`, `.next
 
 ## Hvad er ikke implementeret endnu
 
-- Adgangskontrol (login) — skal besluttes, før betalte AI-nøgler tilføjes (se [docs/v3-architecture.md §8](docs/v3-architecture.md)).
+- MFA og de fremtidige roller (manager, sales, production, viewer) — kun `admin` er aktiv (se [docs/security.md](docs/security.md)).
 - Tilbudstekst bruger endnu ikke Job Center. Produktionens agentopgaver og CRM's Echo-opgaver registreres i Job Center, men opgavetyperne (`production.agent_task`, `crm.*`) er planlagt (routeren blokerer med begrundelse).
 - Dashboard kan ikke vise faktureret omsætning eller modtagne betalinger. Platformen har ingen faktura- og betalingsdata, og tallene vises derfor som "Ikke tilgængelig".
 - CRM sender ingen e-mails og foretager ingen opkald; aktiviteter og tilbudsafsendelse registreres kun manuelt.
-- Brugerlogin og adgangsstyring.
 - Afsendelse af tilbud til kunder. Status `sent`, `accepted` og `rejected` registreres manuelt (Tilbud/CRM).
 - Lokalt bruges JSON-filer; på Vercel bruges Supabase bag samme `CollectionStore`-interface (ét JSONB-dokument pr. entitet, ikke normaliserede tabeller).
 - Websøgning (Brave) og Claude kræver API-nøgler; uden dem markeres analysen som regelbaseret, og eksterne kilder (anmeldelser, job, nyheder, konkurrenter) undersøges ikke.

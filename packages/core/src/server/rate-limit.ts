@@ -73,3 +73,27 @@ export async function enforceSharedRateLimit(key: string, options: RateLimitOpti
     throw new AppError("rate_limited", `For mange forespørgsler. Prøv igen om ${seconds} sekunder.`);
   }
 }
+
+/**
+ * Kontrollerer en grænse UDEN at tælle — fx før et loginforsøg, hvor kun
+ * mislykkede forsøg tælles (med `enforceSharedRateLimit`), så en legitim
+ * bruger ikke spærres af sine egne vellykkede logins.
+ */
+export async function assertSharedRateLimitAvailable(key: string, options: RateLimitOptions): Promise<void> {
+  const now = Date.now();
+  const bucket = buckets.get(key);
+  let count = bucket && bucket.resetAt > now ? bucket.count : 0;
+  let resetAt = bucket?.resetAt ?? now + options.windowMs;
+  if (getStorageBackend() === "supabase") {
+    const windowStart = Math.floor(now / options.windowMs) * options.windowMs;
+    const shared = await windowStore.get(`${hashKey(key)}-${windowStart}`);
+    if (shared && shared.count > count) {
+      count = shared.count;
+      resetAt = windowStart + options.windowMs;
+    }
+  }
+  if (count >= options.limit) {
+    const seconds = Math.max(1, Math.ceil((resetAt - now) / 1000));
+    throw new AppError("rate_limited", `For mange forsøg. Prøv igen om ${seconds} sekunder.`);
+  }
+}

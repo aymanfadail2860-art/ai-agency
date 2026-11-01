@@ -15,6 +15,8 @@ const dkk = (n: number) => new Intl.NumberFormat("da-DK", { style: "currency", c
 const sum = (page: Page, id: string) => page.getByTestId(id).evaluateAll((els) => els.reduce((s, e) => s + ((e as HTMLInputElement).disabled ? 0 : Number((e as HTMLInputElement).value)), 0));
 
 test.afterAll(() => writeFileSync(`${OUT}/results.json`, JSON.stringify(results, null, 2)));
+// V4.1: platformen kræver login. Den fulde live-test kører kun med en administratorsession (live-auth.setup.ts).
+test.skip(!process.env.LIVE_ADMIN_EMAIL, "Sæt LIVE_ADMIN_EMAIL og LIVE_ADMIN_PASSWORD for den fulde live-test.");
 
 async function setMode(request: APIRequestContext, mode: "demo" | "live") {
   const res = await request.put("/api/settings", { data: { mode } });

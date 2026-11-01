@@ -7,15 +7,14 @@ import type { CollectionStore } from "./json-store";
  * ----------------
  * Samme `CollectionStore`-interface som JSON-filerne, men gemt i tabellen
  * `public.documents` (se supabase/migrations). Kaldene går til Supabases
- * REST-API (PostgREST) og sker kun server-side. To adgangsformer:
+ * REST-API (PostgREST) og sker kun server-side med servernøglen
+ * (`SUPABASE_SERVICE_ROLE_KEY` eller `SUPABASE_SECRET_KEY`, "Sensitive" i Vercel).
  *
- *  1. Servernøgle (anbefalet på Vercel): `SUPABASE_SERVICE_ROLE_KEY` eller
- *     `SUPABASE_SECRET_KEY`, typisk sat automatisk af Supabases Vercel-integration.
- *  2. Offentlig nøgle + delt hemmelighed: `SUPABASE_PUBLISHABLE_KEY` og
- *     `AGENCY_DB_SECRET`; RLS kræver headeren `x-agency-secret`.
- *
- * Rækkesikkerhed (RLS) er altid slået til, så den offentlige nøgle alene
- * ikke giver adgang. Opdateringer bruger optimistisk låsning via `rev`.
+ * V4.1: Tabellen er låst til servernøglen (migration 20261101000000):
+ * anon og authenticated har ingen rettigheder, så hverken den offentlige nøgle
+ * eller en indlogget brugers JWT kan gå udenom Next.js. Den tidligere
+ * adgangsform med offentlig nøgle + delt hemmelighed er fjernet.
+ * Opdateringer bruger optimistisk låsning via `rev`.
  */
 
 export interface SupabaseStoreConfig {
@@ -30,10 +29,7 @@ export function getSupabaseStoreConfig(): SupabaseStoreConfig | null {
   const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL)?.trim().replace(/\/$/, "");
   if (!url) return null;
   const serverKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY)?.trim();
-  if (serverKey) return { url, key: serverKey, secret: null };
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY?.trim();
-  const secret = process.env.AGENCY_DB_SECRET?.trim();
-  return key && secret ? { url, key, secret } : null;
+  return serverKey ? { url, key: serverKey, secret: null } : null;
 }
 
 /** Ældre JWT-nøgler sendes også som Bearer; nye nøgler (sb_…) kun som `apikey`. */

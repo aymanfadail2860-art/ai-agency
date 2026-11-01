@@ -20,6 +20,11 @@ export async function apiFetch<T>(path: string, init: { method?: string; body?: 
   const data = await res.json().catch(() => null);
   if (!res.ok) {
     const err = (data as { error?: { message?: string; code?: string } } | null)?.error;
+    // Udløbet eller manglende session: send brugeren til login og tilbage hertil bagefter.
+    if (res.status === 401 && typeof window !== "undefined") {
+      const next = `${window.location.pathname}${window.location.search}`;
+      window.location.assign(`/login?reason=expired&next=${encodeURIComponent(next)}`);
+    }
     throw new ApiError(err?.message ?? `Uventet fejl (${res.status}).`, res.status, err?.code ?? "unknown");
   }
   return data as T;

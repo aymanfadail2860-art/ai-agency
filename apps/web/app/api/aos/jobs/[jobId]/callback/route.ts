@@ -1,5 +1,5 @@
 import { handleCallback } from "@agency/orchestrator/server";
-import { json, rateLimit, readJson, route } from "@/lib/http";
+import { json, machineRoute, rateLimit, readJson } from "@/lib/http";
 import { ensureExecutors } from "@/lib/orchestrator";
 
 export const dynamic = "force-dynamic";
@@ -8,8 +8,9 @@ export const dynamic = "force-dynamic";
  * Tilbagemeldinger fra en Claude Code-session (protokol: routines/ai-agency-job.md).
  * Godkendes med jobbets engangsnøgle i `Authorization: Bearer …` — kun hash gemmes.
  * Indholdet behandles som data og valideres mod opgavetypens resultatskema.
+ * Ingen browsersession: kun engangsnøglen giver adgang (snævert afgrænset maskinadgang).
  */
-export const POST = route<{ params: Promise<{ jobId: string }> }>(async (req, { params }) => {
+export const POST = machineRoute<{ params: Promise<{ jobId: string }> }>(async (req, { params }) => {
   ensureExecutors();
   const { jobId } = await params;
   await rateLimit(req, `callback:${jobId}`, { limit: 30, windowMs: 60_000 });

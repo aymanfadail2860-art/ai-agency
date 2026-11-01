@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { ZodError } from "zod";
 import { enforceSharedRateLimit, type RateLimitOptions } from "@agency/core/server";
 import { AppError, isAppError } from "@agency/shared";
+import { requireAdmin } from "./auth/session";
 
 /**
  * Fælles håndtering for API-routes: ensartede fejlsvar, Zod-validering og
@@ -25,8 +26,9 @@ export function errorResponse(err: unknown) {
 type Handler<C> = (req: NextRequest, ctx: C) => Promise<Response> | Response;
 
 /**
- * Misbrugsbeskyttelse for den offentlige demo (ingen login i V1): alle
- * muterende kald begrænses pr. klient og samlet for hele platformen.
+ * Misbrugsbeskyttelse: alle muterende kald begrænses pr. klient og samlet for
+ * hele platformen (også efter login — en kompromitteret session kan ikke
+ * massemodificere data).
  */
 const perMinute = Number(process.env.WRITE_RATE_LIMIT_PER_MINUTE);
 export const WRITE_LIMITS = {
@@ -35,18 +37,40 @@ export const WRITE_LIMITS = {
   global: { limit: 3000, windowMs: 60 * 60_000 },
 } as const;
 
-export function route<C = unknown>(handler: Handler<C>): Handler<C> {
+type Access = "admin" | "public" | "machine";
+
+function wrap<C>(handler: Handler<C>, access: Access): Handler<C> {
   return async (req, ctx) => {
     try {
+      // Forsvar i dybden: middleware har allerede kontrolleret adgangen, men hver
+      // route kræver selv en gyldig administratorsession (valideret hos Supabase Auth).
+      if (access === "admin") await requireAdmin();
       if (req.method !== "GET" && req.method !== "HEAD") {
         await rateLimit(req, "write", WRITE_LIMITS.perClient);
         await enforceSharedRateLimit("write:global", WRITE_LIMITS.global);
       }
-      return await handler(req, ctx);
+      const res = await handler(req, ctx);
+      if (access === "admin") res.headers.set("cache-control", "private, no-store");
+      return res;
     } catch (err) {
       return errorResponse(err);
     }
   };
+}
+
+/** Standard for alle API-routes: kræver en gyldig administratorsession. */
+export function route<C = unknown>(handler: Handler<C>): Handler<C> {
+  return wrap(handler, "admin");
+}
+
+/** KUN login og logout. Må aldrig bruges til data-endpoints. */
+export function publicRoute<C = unknown>(handler: Handler<C>): Handler<C> {
+  return wrap(handler, "public");
+}
+
+/** KUN maskine-til-maskine (Claude Code-callbacks), som har sin egen snævre godkendelse (engangsnøgle pr. job). */
+export function machineRoute<C = unknown>(handler: Handler<C>): Handler<C> {
+  return wrap(handler, "machine");
 }
 
 const MAX_BODY_BYTES = 512 * 1024;

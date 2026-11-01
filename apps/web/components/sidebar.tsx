@@ -19,7 +19,7 @@ export function Sidebar({ mode }: { mode: "demo" | "live" }) {
         </span>
         <div className="leading-tight">
           <p className="text-sm font-semibold tracking-tight">AI Agency</p>
-          <p className="text-[11px] text-sidebar-muted">Intern platform · V3</p>
+          <p className="text-[11px] text-sidebar-muted">Intern platform · V4</p>
         </div>
       </div>
       <nav aria-label="Moduler" className="flex-1 space-y-1 px-3 py-4">

@@ -108,7 +108,8 @@ describe("Supabase-konfiguration", () => {
     process.env.SUPABASE_URL = "https://x.supabase.co";
     process.env.SUPABASE_PUBLISHABLE_KEY = "sb_publishable_x";
     process.env.AGENCY_DB_SECRET = "s";
-    expect(supabaseAuthHeaders(getSupabaseStoreConfig()!)).toEqual({ apikey: "sb_publishable_x", "x-agency-secret": "s" });
+    // V4.1: Den offentlige nøgle (til login) giver aldrig adgang til datalageret — kun servernøglen gør.
+    expect(getSupabaseStoreConfig()).toBeNull();
     clear();
   });
 });

@@ -50,8 +50,8 @@ async function withLock<R>(key: string, fn: () => Promise<R>): Promise<R> {
 }
 
 /**
- * Vælger lagring ved første brug: Supabase, når SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY
- * og AGENCY_DB_SECRET er sat (fx på Vercel), ellers lokale JSON-filer.
+ * Vælger lagring ved første brug: Supabase, når SUPABASE_URL og servernøglen
+ * (SUPABASE_SECRET_KEY / SUPABASE_SERVICE_ROLE_KEY) er sat (fx på Vercel), ellers lokale JSON-filer.
  */
 export function createCollectionStore<T extends { id: string }>(
   module: ModuleKey,

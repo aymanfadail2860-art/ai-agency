@@ -1,4 +1,4 @@
-import { json } from "@/lib/http";
+import { json, route } from "@/lib/http";
 
 export const dynamic = "force-dynamic";
 
@@ -11,5 +11,5 @@ function notImplemented() {
   return json({ error: { code: "not_implemented", message: "Dashboard modtager ikke datapunkter. Nøgletallene beregnes fra modulerne — brug GET /api/dashboard." }, contract: "dashboard.metric-datapoint@1", documentation: "docs/dashboard.md" }, 501);
 }
 
-export const GET = notImplemented;
-export const POST = notImplemented;
+export const GET = route(async () => notImplemented());
+export const POST = route(async () => notImplemented());

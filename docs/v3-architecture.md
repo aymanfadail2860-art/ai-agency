@@ -133,7 +133,9 @@ Intet permanent er bundet til den personlige konto:
 Ved skiftet oprettes rutinerne på virksomhedskontoen, og variablerne udskiftes. Kode og
 data er uændrede.
 
-## 8. Beslutning, der kræver din godkendelse: adgangsbeskyttelse
+## 8. Adgangsbeskyttelse — gennemført i V4.1 (mulighed A: Supabase Auth)
+
+Se [security.md](security.md) og [auth-setup.md](auth-setup.md). Oprindelig beslutningsgrundlag:
 
 Platformen er i dag åben uden login. Det var et bevidst valg i V1/V2 (kun Demo Mode).
 Så snart `ANTHROPIC_API_KEY` eller et rutine-token tilføjes, kan alle med linket bruge
@@ -150,7 +152,7 @@ fordi der ikke findes credentials.
 
 ## 9. Næste etaper
 
-1. Adgangskontrol (efter din beslutning).
+1. ~~Adgangskontrol~~ **Gennemført i V4.1** (Supabase Auth, admin-rolle, låst datalager).
 2. Live-test af Claude API og Claude Code-rutinen med rigtige credentials.
 3. Tilbud via Job Center: `quotes.proposal_text` med Nova. Priser forbliver deterministiske.
 4. ~~Produktion & Levering~~ **Gennemført i etape 2** ([production.md](production.md)): projekter,

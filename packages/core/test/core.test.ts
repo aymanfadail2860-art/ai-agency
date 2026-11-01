@@ -162,3 +162,14 @@ describe("omkostningsgrænser", () => {
     delete process.env.RESEARCH_DAILY_LIMIT;
   });
 });
+
+describe("Login-begrænsning (kun mislykkede forsøg tæller)", () => {
+  it("kontrol uden at tælle spærrer først, når grænsen for mislykkede forsøg er nået", async () => {
+    const { assertSharedRateLimitAvailable, enforceSharedRateLimit } = await import("@agency/core/server");
+    const key = `login-fail:test-${Date.now()}@e2e.local`;
+    const opts = { limit: 3, windowMs: 60_000 };
+    for (let i = 0; i < 10; i++) await assertSharedRateLimitAvailable(key, opts); // vellykkede logins tæller ikke
+    for (let i = 0; i < 3; i++) await enforceSharedRateLimit(key, opts); // 3 mislykkede
+    await expect(assertSharedRateLimitAvailable(key, opts)).rejects.toMatchObject({ code: "rate_limited" });
+  });
+});

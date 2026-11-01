@@ -2,7 +2,7 @@
   "name": "@agency/dashboard",
   "version": "0.1.0",
   "private": true,
-  "description": "Modul 5 \u2014 Dashboard (Afventer)",
+  "description": "Modul 5 — Dashboard: Executive Command Center, analytics-lag og Action Center",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
@@ -17,6 +17,7 @@
     "zod": "3.25.76"
   },
   "peerDependencies": {
+    "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -24,6 +25,7 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "react": "19.1.1",
-    "react-dom": "19.1.1"
+    "react-dom": "19.1.1",
+    "next": "15.5.28"
   }
 }

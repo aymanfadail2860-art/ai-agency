@@ -12,7 +12,7 @@ import { ensureProductionWiring } from "@/lib/production";
 export const metadata: Metadata = { title: "Produktionsprojekt" };
 export const dynamic = "force-dynamic";
 
-export default async function ProjectPage({ params }: { params: Promise<{ projectId: string }> }) {
+export default async function ProjectPage({ params, searchParams }: { params: Promise<{ projectId: string }>; searchParams: Promise<{ tab?: string }> }) {
   ensureProductionWiring();
   const { projectId } = await params;
   const bundle = await orNotFound(getProject(projectId));
@@ -61,6 +61,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ projec
         blockers={blockersFor(project, tasks)}
         mode={project.mode}
         overdue={summarize(project, tasks).overdue}
+        initialTab={(await searchParams).tab}
       />
     </>
   );

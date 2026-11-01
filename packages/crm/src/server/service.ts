@@ -647,6 +647,30 @@ export async function deleteDemoAccount(accountId: string): Promise<void> {
   await accountStore.remove(accountId);
 }
 
+/**
+ * KUN DEMODATA: tilbagedaterer en demo-markeret virksomhed eller salgsmulighed, så
+ * Dashboard-demoen kan vise et realistisk forløb over tid. Afviser alt, der ikke er
+ * demo-markeret i Demo Mode — rigtige poster kan aldrig ændres herigennem.
+ */
+export async function backdateDemoRecord(kind: "account" | "opportunity", id: string, at: { createdAt: string; closedAt?: string | null }): Promise<void> {
+  const createdAt = z.string().datetime().parse(at.createdAt);
+  if (kind === "account") {
+    const a = await requireAccount(id);
+    if (!a.isDemo || a.mode !== "demo") throw new AppError("conflict", "Kun CRM-demodata kan tilbagedateres.");
+    await accountStore.update(id, (x) => ({ ...x, createdAt, statusHistory: x.statusHistory.map((h, i) => (i === 0 ? { ...h, at: createdAt } : h)) }));
+    return;
+  }
+  const o = await requireOpportunity(id);
+  if (!o.isDemo || o.mode !== "demo") throw new AppError("conflict", "Kun CRM-demodata kan tilbagedateres.");
+  const closedAt = at.closedAt === undefined ? o.closedAt : at.closedAt === null ? null : z.string().datetime().parse(at.closedAt);
+  await opportunityStore.update(id, (x) => ({
+    ...x,
+    createdAt,
+    closedAt: x.status === "open" ? null : closedAt,
+    history: x.history.map((h, i) => (i === 0 ? { ...h, at: createdAt } : (h.kind === "won" || h.kind === "lost") && closedAt ? { ...h, at: closedAt } : h)),
+  }));
+}
+
 export async function opportunitiesForQuote(quoteId: string): Promise<Opportunity[]> {
   return (await opportunityStore.list()).filter((o) => o.quoteId === quoteId);
 }

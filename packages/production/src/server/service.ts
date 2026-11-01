@@ -803,3 +803,14 @@ export async function markProjectAsDemo(projectId: string): Promise<void> {
   if (project.mode !== "demo") throw new AppError("conflict", "Kun projekter i Demo Mode kan markeres som demo.");
   await projectStore.update(projectId, (p) => ({ ...p, isDemo: true, updatedAt: nowIso() }));
 }
+
+/** Til Dashboardets analytics-lag: registrerede omkostninger og opgaver for de givne projekter (læses, kopieres ikke). */
+export async function costsForProjects(projectIds: string[]): Promise<CostEntry[]> {
+  const ids = new Set(projectIds);
+  return (await costStore.list()).filter((c) => ids.has(c.projectId));
+}
+
+export async function tasksForProjects(projectIds: string[]): Promise<ProductionTask[]> {
+  const ids = new Set(projectIds);
+  return (await taskStore.list()).filter((t) => ids.has(t.projectId));
+}

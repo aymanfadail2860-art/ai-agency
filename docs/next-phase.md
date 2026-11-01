@@ -33,8 +33,10 @@ Forslag i prioriteret rækkefølge. Kontrakterne er allerede dokumenteret i [api
 
 ## 5. Dashboard (Modul 5)
 
-- Aggregér `dashboard.metric-datapoint@1` fra modulerne. Dashboard ejer ingen forretningsdata.
-- KPI'er: leads, kunder, aktive tilbud, konvertering, pipelineværdi, implementeringsomsætning, MRR, produktionsprojekter, leveringsstatus, CLV og performance pr. service.
+**Gennemført i V3 etape 4**, se [dashboard.md](dashboard.md). Tilbage:
+
+- Fakturering og betalinger (kilde for niveau 4–5).
+- Annulleringsdato på aftaler, så churn kan beregnes.
 
 ## 6. Research
 

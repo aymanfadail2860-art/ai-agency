@@ -50,9 +50,9 @@ export const MODULES: readonly ModuleDescriptor[] = [
     key: "dashboard",
     name: "Dashboard",
     route: "/dashboard",
-    status: "pending",
+    status: "active",
     icon: "layout-dashboard",
-    description: "KPI'er, omsætning, projekter og performance.",
+    description: "Executive Command Center: KPI'er, salg, økonomi, levering, AI-agenter og Action Center på tværs af modulerne.",
   },
   {
     key: "aos",

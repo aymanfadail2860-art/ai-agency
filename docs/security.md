@@ -16,6 +16,8 @@
 
 **CRM (V3.3) — persondata uden login:** CRM gemmer kontaktpersoners navne, e-mails og telefonnumre. Uden adgangskontrol kan alle med URL'en læse og ændre dem. Brug kun demodata eller fiktive kontakter, indtil login er indført. CRM sender ingen e-mails, foretager ingen opkald og starter ingen betalte AI-opgaver (Echo-opgaverne er planlagte og blokeres af routeren). Se [crm.md](crm.md#sikkerhed-og-adgang).
 
+**Dashboard (V3.4):** Dashboard samler bureauets økonomi- og kundetal på én side. Adgangsbeskyttelse er bevidst udskudt, indtil alle seks moduler har en færdig demo, og er næste etape. Indtil da: kun fiktive data, ingen betalte AI-credentials i produktion og ingen automatisk ekstern kommunikation. Dashboard-demoen skriver kun demo-markerede poster og kan ikke ændre rigtige data.
+
 **Supabase-rådgivning:** `private.config` har RLS slået fra. Tabellen er kun tilgængelig for rollen `postgres` (ingen rettigheder for `anon`/`authenticated`), og `private`-skemaet eksponeres ikke via API'et, så den reelle risiko er lav. Anbefalet hærdning (kræver din godkendelse): `alter table private.config enable row level security;` (uden policies; påvirker ikke server-rollen).
 
 ## Implementeret i V1

@@ -202,15 +202,11 @@ test("Live Mode: reel URL-research (kun når LIVE_RESEARCH_URL er sat)", async (
   }
 });
 
-test("Afventende moduler og mobil", async ({ page }) => {
-  for (const [nav, title] of [
-    ["nav-dashboard", "Dashboard"],
-  ] as const) {
-    await page.goto("/research");
-    await page.getByTestId(nav).click();
-    await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
-    await expect(page.getByTestId("pending-notice")).toContainText("Afventer — modulet udvikles i en kommende version.");
-  }
+test("Alle moduler aktive og mobil", async ({ page }) => {
+  await page.goto("/research");
+  await page.getByTestId("nav-dashboard").click();
+  await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
+  await expect(page.getByTestId("overview-kpis").or(page.getByText("Ingen registrerede data endnu"))).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/research");
   results.mobileHorizontalOverflowPx = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

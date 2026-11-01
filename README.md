@@ -10,7 +10,7 @@ Bureauets **interne arbejdsplatform**: research, salg, produktion, levering, kun
 | 2 | Tilbud | `/quotes` | **Aktiv (V2)**: tilbud til brand med eller uden CVR, engangsydelser, forudsætninger og forbehold, AI-tekst, versioner, PDF |
 | 3 | Produktion & Levering | `/production` | **Aktiv (V3.2)**: projekter fra accepterede tilbud, 11 faser med faseporte i AOS, opgaver, agenter (AOS), arkitektur, filer, QA, aktivitet, økonomi, Service Factory og guidet demo (Restaurant Nord). Se [docs/production.md](docs/production.md) |
 | 4 | CRM | `/crm` | **Aktiv (V3.3)**: leads og virksomheder uden dubletter, kontaktpersoner, Kanban-pipeline med 10 stadier, aktiviteter (liste og tidslinje), 360-graders kundeprofil på tværs af Research, Tilbud, Produktion og AOS (Echo), og en guidet 12-trins demo. Se [docs/crm.md](docs/crm.md) |
-| 5 | Dashboard | `/dashboard` | Afventer: visuelt preview (demo-markeret) + dokumenteret kontrakt |
+| 5 | Dashboard | `/dashboard` | **Aktiv (V3.4)**: Executive Command Center med Executive Overview, Salg, Økonomi, Levering, AI og agenter samt Action Center. Har globale filtre, interaktive grafer, et deterministisk analytics-lag uden dobbeltoptælling, Dashboard Demo Mode og det samlede seks-moduls forløb. Se [docs/dashboard.md](docs/dashboard.md) |
 | 6 | AOS — Agent Operating System | `/aos` | **Aktiv (V3)**: Command Center, isometrisk Agent Office, Agent Library (versioneret), Job Center, Live Activity, Godkendelser, Performance & Cost, Integration Manager |
 
 **Fælles AI-infrastruktur (V3, `@agency/orchestrator`):** alle opgaver går gennem Job Center. En regelbaseret, forklarlig router vælger motor: Claude Code-rutine (abonnement), Claude API (betalt) eller intern software uden AI. Godkendelser, omkostninger og agenternes status registreres samlet. Se [docs/v3-architecture.md](docs/v3-architecture.md) og [docs/claude-code-integration.md](docs/claude-code-integration.md).
@@ -78,8 +78,8 @@ Indstillinger viser, om platformen bruger "Supabase (database)" eller "lokale JS
 ## Test
 
 ```bash
-pnpm test        # Vitest: 123 enhedstests (router, Job Center, callbacks, agentversioner, brand-first, scoring, priser, kontrakter, SSRF, budgetter …)
-pnpm test:e2e    # Playwright: scenarierne A-F + AOS + Produktion + CRM (pipeline, aktiviteter, 360-profil, Research/Tilbud/Produktion-integration, guidet demo)
+pnpm test        # Vitest: 138 enhedstests (router, Job Center, callbacks, agentversioner, brand-first, scoring, priser, kontrakter, SSRF, budgetter …)
+pnpm test:e2e    # Playwright: scenarierne A-F + AOS + Produktion + CRM + Dashboard (KPI'er, filtre, Action Center, demo og det samlede seks-moduls forløb)
 LIVE_BASE_URL=https://… pnpm exec playwright test -c playwright.live.config.ts   # live-test mod en deployet instans
 pnpm typecheck   # TypeScript i alle pakker
 ```
@@ -103,7 +103,7 @@ ai-agency/
 │   ├── quotes/               Modul 2 — komponenter, prisberegning + /server (tilbud, katalog, PDF)
 │   ├── production/           Modul 3 — projekter, faser, opgaver, QA, Service Factory + /server (bruger AOS)
 │   ├── crm/                  Modul 4 — virksomheder, kontakter, pipeline, aktiviteter, 360-profil + /server
-│   ├── dashboard/            Modul 5 — preview + fremtidige kontrakter
+│   ├── dashboard/            Modul 5 — analytics-lag (rene funktioner), grafer og Dashboard-visninger
 │   ├── orchestrator/         FÆLLES AI-INFRASTRUKTUR: Job Center, Execution Router, Agent Manager,
 │   │                         godkendelser, omkostninger, Integration Manager (+ /server)
 │   └── aos/                  Modul 6 — AOS-komponenter (Command Center, Agent Office, …)
@@ -121,6 +121,7 @@ Hvert forretningsmodul har en klientsikker indgang (`@agency/<modul>`: komponent
 - [V3-arkitektur: hybrid AI-motor, orchestrator og AOS](docs/v3-architecture.md)
 - [Produktion & Levering: faser, AOS-integration, Service Factory og demo](docs/production.md)
 - [CRM: model, integrationer, demo, datamodelvurdering og adgangsrisiko](docs/crm.md)
+- [Dashboard: KPI-definitioner, analytics-lag, filtre, Action Center og samlet demo](docs/dashboard.md)
 - [Claude Code som motor — verificerede muligheder og begrænsninger](docs/claude-code-integration.md)
 - [Arkitektur og modulgrænser](docs/architecture.md)
 - [API-kontrakter og endepunkter](docs/api-contracts.md)
@@ -138,8 +139,8 @@ Eksporten indeholder kildekode og dokumentation, men ikke `node_modules`, `.next
 ## Hvad er ikke implementeret endnu
 
 - Adgangskontrol (login) — skal besluttes, før betalte AI-nøgler tilføjes (se [docs/v3-architecture.md §8](docs/v3-architecture.md)).
-- Tilbudstekst og Dashboard bruger endnu ikke Job Center. Produktionens agentopgaver og CRM's Echo-opgaver registreres i Job Center, men opgavetyperne (`production.agent_task`, `crm.*`) er planlagt (routeren blokerer med begrundelse).
-- Dashboard har kun et visuelt preview og en kontraktspecifikation. Endepunktet svarer `501 Not Implemented`.
+- Tilbudstekst bruger endnu ikke Job Center. Produktionens agentopgaver og CRM's Echo-opgaver registreres i Job Center, men opgavetyperne (`production.agent_task`, `crm.*`) er planlagt (routeren blokerer med begrundelse).
+- Dashboard kan ikke vise faktureret omsætning eller modtagne betalinger. Platformen har ingen faktura- og betalingsdata, og tallene vises derfor som "Ikke tilgængelig".
 - CRM sender ingen e-mails og foretager ingen opkald; aktiviteter og tilbudsafsendelse registreres kun manuelt.
 - Brugerlogin og adgangsstyring.
 - Afsendelse af tilbud til kunder. Status `sent`, `accepted` og `rejected` registreres manuelt (Tilbud/CRM).

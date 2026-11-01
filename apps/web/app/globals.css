@@ -102,3 +102,28 @@
     animation: none;
   }
 }
+
+/*
+ * Dashboard — graffarver (dataviz-metoden). Kategoriske farver i fast rækkefølge,
+ * valideret med validate_palette.js mod kortfladen (#ffffff lys, #0f1529 mørk/AOS).
+ * Farven følger rollen (serien), aldrig rangen. Tekst bruger aldrig seriefarven.
+ */
+@layer base {
+  :root {
+    --viz-1: #2a78d6;
+    --viz-2: #eb6834;
+    --viz-3: #1baf7a;
+    --viz-grid: #e1e0d9;
+    --viz-axis: #c3c2b7;
+    --viz-muted: #898781;
+    --viz-surface: #ffffff;
+  }
+  body:has([data-theme-scope="aos"]) {
+    --viz-1: #3987e5;
+    --viz-2: #d95926;
+    --viz-3: #199e70;
+    --viz-grid: #2c2c2a;
+    --viz-axis: #383835;
+    --viz-surface: #0f1529;
+  }
+}

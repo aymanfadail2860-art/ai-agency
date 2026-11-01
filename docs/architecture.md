@@ -28,7 +28,7 @@
 - `core`: datamodel, kontrakter, hændelsesmodel, modulregister, standard-servicekatalog. Desuden `core/server`: JSON-lagring, fælles virksomhedsregister, hændelseslog, indstillinger og rate limiting.
 - `integrations`: alle eksterne kald (CVR, Claude, Brave Search, webhentning) bag adapters. Ingen forretningslogik.
 - `research` og `quotes` afhænger ikke af hinanden. Overførslen orkestreres i `apps/web/app/api/research/reports/[reportId]/handoff/route.ts`.
-- `production` og `crm` er aktive moduler (V3); `dashboard` indeholder kun preview-komponenter og fremtidige skemaer. Tværgående CRM-flows komponeres i `apps/web/lib/crm.ts` via kontrakter (`crm.quote-request@1`) og brandets fælles id.
+- `production`, `crm` og `dashboard` er aktive moduler (V3). Dashboard ejer ingen data: `apps/web/lib/dashboard.ts` læser modulerne og overlader beregningerne til analytics-laget i `@agency/dashboard`. Tværgående CRM-flows komponeres i `apps/web/lib/crm.ts` via kontrakter (`crm.quote-request@1`) og brandets fælles id.
 
 Hvert modul eksporterer to indgange:
 
@@ -69,7 +69,7 @@ Defineret i `packages/core/src/models.ts` (Zod → TypeScript). Alle entiteter h
 | Quote / QuoteVersion / QuoteLineItem | quotes | versionering: tidligere versioner låses (`superseded`) |
 | ProductionProject, ProductionTask, Deliverable | production | aktiv (V3.2), se production.md |
 | CrmAccount, Contact, Opportunity, Activity | crm | aktiv (V3.3), se crm.md |
-| DashboardMetric | dashboard | kun skema (fremtid) |
+| Analytics-øjebliksbillede (ingen lagring) | dashboard | aktiv (V3.4), se dashboard.md |
 
 ## 5. Research Engine (V2)
 

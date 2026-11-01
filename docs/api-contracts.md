@@ -134,7 +134,9 @@ aktivitets-API (valideret, `400` ved ugyldige data). Alle CRM-endepunkter står 
 
 ---
 
-## 4. `dashboard.metric-datapoint@1`: PLANLAGT
+## 4. `dashboard.metric-datapoint@1`: IKKE I BRUG (V3.4)
+
+Dashboard læser modulernes data direkte og beregner nøgletallene deterministisk (`GET /api/dashboard`, se [dashboard.md](dashboard.md)). Push af datapunkter er ikke nødvendigt, og endepunktet svarer fortsat `501`. Den oprindelige specifikation:
 
 **Alle moduler → Dashboard.** Endepunkt: `POST /api/dashboard/metrics` (501 i V1).
 

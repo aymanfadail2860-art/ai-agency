@@ -259,7 +259,7 @@ export const CONTRACT_REGISTRY = [
     from: "alle moduler",
     to: "dashboard",
     status: "planned",
-    endpoint: "POST /api/dashboard/metrics (svarer 501 i V1)",
-    description: "Leverer KPI-datapunkter til Dashboard.",
+    endpoint: "(ikke i brug — svarer 501)",
+    description: "Oprindeligt push af KPI-datapunkter. I V3.4 læser Dashboard modulerne direkte og beregner nøgletallene deterministisk (GET /api/dashboard).",
   },
 ] as const;

@@ -161,5 +161,5 @@ fordi der ikke findes credentials.
    aktiviteter, 360-profil, Research/Tilbud/Produktion-integration og Echo-opgaver i Job Center
    (planlagte typer, blokeres ærligt). Næste: implementér `crm.follow_up_draft` og
    `crm.meeting_prep` (Echo), når adgangskontrol er på plads.
-6. Dashboard på de samme jobs, hændelser og omkostningsdata (sidste moduludvikling).
+6. ~~Dashboard~~ **Gennemført i etape 4** ([dashboard.md](dashboard.md)): Executive Command Center over alle moduler med et deterministisk analytics-lag, Action Center og det samlede seks-moduls demoforløb.
 7. Normaliserede tabeller (forslag for CRM i [crm.md](crm.md#vurdering-af-datamodellen)) og en egentlig jobkø, når belastningen kræver det.

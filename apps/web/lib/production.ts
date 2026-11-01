@@ -97,8 +97,10 @@ export async function seedProductionDemo(): Promise<{ projects: ProductionProjec
   await requireDemoMode();
   const existing = await listDemoProjects();
   const rn = existing.find((p) => p.source.kind === "quote" && p.customer.name === "Restaurant Nord");
-  if (existing.length && rn) return { projects: existing, restaurantNordId: rn.id, created: false };
-  const portfolio = existing.length ? existing : await seedDemoPortfolio();
+  // Baggrundsporteføljen genkendes på kilden "demo" — andre demoprojekter (fx fra CRM-demoen) tæller ikke med.
+  const seeded = existing.filter((p) => p.source.kind === "demo");
+  if (seeded.length && rn) return { projects: existing, restaurantNordId: rn.id, created: false };
+  const portfolio = seeded.length ? seeded : await seedDemoPortfolio();
   const restaurantNord = rn ?? (await seedRestaurantNord());
   return { projects: [...portfolio, restaurantNord], restaurantNordId: restaurantNord.id, created: true };
 }

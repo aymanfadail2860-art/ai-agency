@@ -1,2 +1,4 @@
+// Modul 5 — Dashboard. Analytics-laget er isomorft (rene funktioner); komponenterne er klientsikre.
 export * from "./contracts";
-export { DashboardPreview } from "./preview";
+export * from "./analytics";
+export * from "./components";

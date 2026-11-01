@@ -167,17 +167,12 @@ test("Scenarie D: flere juridiske enheder vælges ikke automatisk", async ({ pag
   await expect(page.getByTestId("overview-tab")).not.toContainText("Bryggeriet Nordlys Holding ApS");
 });
 
-test("Afventende moduler", async ({ page }) => {
-  for (const [nav, title] of [
-    ["nav-dashboard", "Dashboard"],
-  ] as const) {
-    await page.goto("/research");
-    await page.getByTestId(nav).click();
-    await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
-    await expect(page.getByTestId("pending-notice")).toContainText("Afventer — modulet udvikles i en kommende version.");
-  }
+test("Alle seks moduler er aktive", async ({ page }) => {
+  await page.goto("/research");
+  await page.getByTestId("nav-dashboard").click();
+  await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
+  await expect(page.getByTestId("pending-notice")).toHaveCount(0);
 });
-
 test("API-kontrakter og validering", async ({ request }) => {
   const bad = await request.post("/api/quotes/intake", { data: { contract: "research.quote-handoff", version: 2, services: [] } });
   expect(bad.status()).toBe(400);

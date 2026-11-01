@@ -4,9 +4,9 @@ import { CONTRACT_REGISTRY, DEFAULT_SERVICE_CATALOG, MODULES, ProductionIntakeSc
 import { checkRateLimit, companyRegistry, createCollectionStore, listEvents, resetRateLimits } from "@agency/core/server";
 
 describe("modulregister", () => {
-  it("indeholder seks selvstændige moduler med egne routes; kun Dashboard afventer", () => {
+  it("indeholder seks selvstændige moduler med egne routes; alle er aktive (V3.4)", () => {
     expect(MODULES.map((m) => m.key)).toEqual(["research", "quotes", "production", "crm", "dashboard", "aos"]);
-    expect(MODULES.filter((m) => m.status === "active").map((m) => m.key)).toEqual(["research", "quotes", "production", "crm", "aos"]);
+    expect(MODULES.filter((m) => m.status === "active").map((m) => m.key)).toEqual(["research", "quotes", "production", "crm", "dashboard", "aos"]);
     expect(new Set(MODULES.map((m) => m.route)).size).toBe(6);
     expect(MODULES.find((m) => m.key === "production")!.route).toBe("/production");
   });

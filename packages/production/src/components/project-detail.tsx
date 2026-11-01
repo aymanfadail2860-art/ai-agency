@@ -31,7 +31,11 @@ export interface ProjectDetailProps {
   blockers: string[];
   mode: "demo" | "live";
   overdue: boolean;
+  /** Faneblad fra URL'en (?tab=), fx når Dashboardets Action Center linker hertil. */
+  initialTab?: string;
 }
+
+const PROJECT_TABS = ["overview", "tasks", "agents", "architecture", "files", "testing", "activity", "finance"];
 
 /** Hvad der sker i hver fase — vises i den guidede demo og på oversigten. */
 export const PHASE_GUIDE: Record<Phase, { what: string; agents: string; gate?: string }> = {
@@ -342,7 +346,7 @@ function OverviewTab({ props, onChange }: { props: ProjectDetailProps; onChange:
 export function ProjectDetail(props: ProjectDetailProps) {
   const router = useRouter();
   const { project, tasks } = props.bundle;
-  const [tab, setTab] = React.useState("overview");
+  const [tab, setTab] = React.useState(props.initialTab && PROJECT_TABS.includes(props.initialTab) ? props.initialTab : "overview");
   const [phaseFilter, setPhaseFilter] = React.useState<Phase | null>(null);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
